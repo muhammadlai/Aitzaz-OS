@@ -245,7 +245,11 @@ function buildMenu() {
 // Command-line switches must be set before the app is ready to take effect.
 // 1) Let TTS audio play without a user gesture.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
-// 2) Plain-http servers: mark that origin as secure so the browser mic works.
+// 2) ChromeOS Crostini: Electron's sandbox often fails under Sommelier.
+if (process.platform === 'linux' && (fs.existsSync('/dev/.cros_milestone') || fs.existsSync('/mnt/chromeos'))) {
+  app.commandLine.appendSwitch('no-sandbox');
+}
+// 3) Plain-http servers: mark that origin as secure so the browser mic works.
 //    (The recommended setup is HTTPS — see docs/SETUP.md "TLS certificates".)
 const _bootCfg = loadConfig();
 const _bootTarget = hudUrl(_bootCfg.url);

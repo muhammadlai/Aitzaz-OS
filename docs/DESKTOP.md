@@ -36,6 +36,26 @@ Har platform ki file:
 
 Chromebook (ChromeOS) native desktop apps **directly** nahi chalata, lekin
 har modern Chromebook mein built-in **Linux environment (Crostini)** hota hai —
+uske andar Linux apps (jaise ye Electron app) chalte hain.
+
+### 🚀 Sab se aasan: one-command setup (auto build + install)
+
+Linux **Terminal** app kholo aur sirf ye 2 lines likho (ye khud Node.js,
+build, aur `.deb` install sab kar dega):
+
+```bash
+sudo apt update && sudo apt install -y curl
+curl -fsSL https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/main/desktop/chromebook-setup.sh | bash
+```
+
+> Note: script ko terminal mein chalane se pehle server **already chal raha**
+> hona chahiye (app connect karne ke liye). Script app ko build + install karta
+> hai; server setup alag hai — see [docs/SETUP.md](SETUP.md).
+
+### Manual steps (agar script use nahi karna)
+
+Chromebook (ChromeOS) native desktop apps **directly** nahi chalata, lekin
+har modern Chromebook mein built-in **Linux environment (Crostini)** hota hai —
 uske andar Linux apps (jaise ye Electron app) chalte hain. Steps:
 
 1. **Linux on karo:**
