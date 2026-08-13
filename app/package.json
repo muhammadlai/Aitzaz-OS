@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist-electron/main/index.js",
   "description": "Aitzaz AI Pro — desktop AI companion (based on the open-source Alice project https://github.com/pmbstyle/Alice, integrated with Aitzaz-OS).",
-  "author": "Aitzaz",
+  "author": "Aitzaz <126396112+muhammadlai@users.noreply.github.com>",
   "license": "MIT",
   "private": true,
   "engines": {
