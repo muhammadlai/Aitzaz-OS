@@ -2,7 +2,7 @@
   "name": "aitzaz-ai-pro",
   "version": "1.0.0",
   "main": "dist-electron/main/index.js",
-  "description": "Aitzaz AI Pro \u2014 desktop AI companion (based on the open-source Alice project https://github.com/pmbstyle/Alice, integrated with Aitzaz-OS).",
+  "description": "Aitzaz AI Pro — desktop AI companion (based on the open-source Alice project https://github.com/pmbstyle/Alice, integrated with Aitzaz-OS).",
   "author": "Aitzaz",
   "license": "MIT",
   "private": true,
@@ -32,7 +32,7 @@
     "build:go:linux": "cd backend && GOOS=linux GOARCH=amd64 go build -ldflags=\"-s -w\" -o ../resources/backend/alice-backend",
     "setup:dependencies": "node scripts/setup-dependencies.js",
     "setup:embeddings": "node scripts/setup-embeddings.js",
-    "rebuild": "npx electron-rebuild -f -w better-sqlite3,hnswlib-node",
+    "rebuild": "npm run build:go && npm run build:web && npx electron-rebuild -f -w better-sqlite3,hnswlib-node",
     "preview": "vite preview",
     "format": "prettier --write .",
     "test": "cross-env ROLLUP_SKIP_NODEJS_REQUIRE=1 vitest run"
@@ -103,6 +103,6 @@
     "undici": "7.29.0"
   },
   "contributors": [
-    "Slava Trofimov (pmbstyle) \u2014 original Alice project"
+    "Slava Trofimov (pmbstyle) — original Alice project"
   ]
 }
