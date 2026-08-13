@@ -32,7 +32,7 @@
     "build:go:linux": "cd backend && GOOS=linux GOARCH=amd64 go build -ldflags=\"-s -w\" -o ../resources/backend/alice-backend",
     "setup:dependencies": "node scripts/setup-dependencies.js",
     "setup:embeddings": "node scripts/setup-embeddings.js",
-    "rebuild": "npm run build:go && npm run build:web && npx electron-rebuild -f -w better-sqlite3,hnswlib-node",
+    "rebuild": "node scripts/ci-preinstall.js && npm run build:go && npm run build:web && npx electron-rebuild -f -w better-sqlite3,hnswlib-node",
     "preview": "vite preview",
     "format": "prettier --write .",
     "test": "cross-env ROLLUP_SKIP_NODEJS_REQUIRE=1 vitest run"
