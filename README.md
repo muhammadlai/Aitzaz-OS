@@ -114,8 +114,8 @@ EOF
 hermes gateway   # or set up its LaunchAgent / service
 
 # 2. This repo
-git clone https://github.com/YOURNAME/aitzaz-ai-pro
-cd aitzaz-ai-pro/server
+git clone https://github.com/muhammadlai/Aitzaz-OS.git
+cd Aitzaz-OS/server
 python3 -m venv .venv
 .venv/bin/pip install fastapi uvicorn requests pyyaml numpy anthropic \
     RealtimeSTT faster-whisper silero-vad websockets psutil
