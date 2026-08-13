@@ -114,8 +114,8 @@ EOF
 hermes gateway   # or set up its LaunchAgent / service
 
 # 2. This repo
-git clone https://github.com/YOURNAME/aitzaz-ai-pro
-cd aitzaz-ai-pro/server
+git clone https://github.com/muhammadlai/Aitzaz-OS.git
+cd Aitzaz-OS/server
 python3 -m venv .venv
 .venv/bin/pip install fastapi uvicorn requests pyyaml numpy anthropic \
     RealtimeSTT faster-whisper silero-vad websockets psutil
@@ -150,12 +150,15 @@ evening.
 server/          FastAPI voice pipeline + HUD host (the core of this project)
 server/hud/      single-file HUD (vanilla JS, no build step)
 server/scripts/  start/stop/health/smoke + cert & boot-audio generators
-desktop/         Electron desktop shell (Windows/macOS/Linux + Chromebook installers)
+app/             Aitzaz AI Pro — full desktop AI companion (Electron + Vue 3 + Go).
+                 Multilingual, wake word, memory/RAG, vision, computer-use tools,
+                 Gmail/Calendar, MCP, avatar, permissions (formerly Zara AI).
+desktop/         Thin Electron shell for the LAN HUD (Windows/macOS/Linux + Chromebook installers)
 client/          optional Windows/Linux push-to-talk Python client (wake word capable)
 worker/          optional GPU sidecars: big-model STT server + stats agent for the Machines panel
 hermes-plugin/   Hermes tool plugin: lets the agent summon/dismiss HUD media panels
 launchd/         macOS auto-start templates with hard-won TCC + FD-limit notes
-docs/            SETUP, ARCHITECTURE (protocols/endpoints), TROUBLESHOOTING
+docs/            SETUP, ARCHITECTURE, INTEGRATION_PLAN, TROUBLESHOOTING
 ```
 
 ## Security model

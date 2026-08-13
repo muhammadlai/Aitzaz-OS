@@ -1,0 +1,73 @@
+// @see https://www.electron.build/configuration/configuration
+{
+  $schema: 'https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json',
+  appId: 'ai.aitzaz.pro',
+  asar: true,
+  productName: 'Aitzaz AI Pro',
+  directories: {
+    output: 'release/${version}',
+  },
+  publish: [
+    {
+      provider: 'github',
+      owner: 'muhammadlai',
+      repo: 'Aitzaz-OS',
+      releaseType: 'release',
+    },
+  ],
+  files: ['dist', 'dist-electron'],
+  extraResources: [
+    {
+      from: './app-config.json',
+      to: 'app-config.json',
+    },
+    {
+      from: 'resources/backend',
+      to: 'backend',
+      filter: ['**/*'],
+    },
+    {
+      from: 'backend/lib',
+      to: 'backend/lib',
+      filter: ['**/*'],
+    },
+    {
+      from: 'backend/models',
+      to: 'backend/models',
+      filter: ['**/*'],
+    },
+  ],
+  mac: {
+    target: ['dmg'],
+    icon: 'public/app_logo.png',
+    entitlements: 'build/entitlements.mac.plist',
+    entitlementsInherit: 'build/entitlements.mac.plist',
+    extendInfo: {
+      NSMicrophoneUsageDescription:
+        'Aitzaz uses the microphone for voice activity detection and speech recognition.',
+    },
+    artifactName: 'Aitzaz-AI-Pro-Mac-${version}-${arch}.${ext}',
+  },
+  win: {
+    target: [
+      {
+        target: 'nsis',
+        arch: ['x64'],
+      },
+    ],
+    artifactName: 'Aitzaz-AI-Pro-Windows-${version}-Setup.${ext}',
+  },
+  nsis: {
+    oneClick: true,
+    perMachine: false,
+    allowToChangeInstallationDirectory: false,
+    deleteAppDataOnUninstall: false,
+  },
+  compression: 'store',
+  linux: {
+    target: ['AppImage', { target: 'deb', arch: ['x64', 'arm64'] }],
+    category: 'Utility',
+    icon: 'public/app_logo.png',
+    artifactName: 'Aitzaz-AI-Pro-Linux-${version}-${arch}.${ext}',
+  },
+}

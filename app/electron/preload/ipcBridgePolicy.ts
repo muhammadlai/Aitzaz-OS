@@ -1,0 +1,138 @@
+// Renderer IPC policy. Keep this file free of Electron imports so it can be
+// unit-tested without starting an Electron process.
+export const INVOKE_CHANNELS = new Set([
+  'thoughtVector:add',
+  'thoughtVector:delete-all',
+  'thoughtVector:search',
+  'rag:select-paths',
+  'rag:index-paths',
+  'rag:search',
+  'rag:clear',
+  'rag:remove-paths',
+  'rag:stats',
+  'memory:save',
+  'memory:delete',
+  'memory:delete-all',
+  'memory:get',
+  'memory:update',
+  'summaries:get-recent-messages',
+  'summaries:save-summary',
+  'summaries:get-latest-summary',
+  'get-renderer-dist-path',
+  'screenshot',
+  'capture-screen',
+  'show-overlay',
+  'hide-overlay',
+  'set-overlay-opacity',
+  'save-screenshot',
+  'get-screenshot',
+  'focus-main-window',
+  'settings-window:open',
+  'settings-window:close',
+  'settings:notify-main-window',
+  'app:restart',
+  'app:is-packaged',
+  'settings:load',
+  'settings:save',
+  'image:save-generated',
+  'save-image-from-base64',
+  'electron:manage-clipboard',
+  'electron:open-path',
+  'desktop:listDirectory',
+  'desktop:executeCommand',
+  'http:request',
+  'http:stream-start',
+  'http:stream-cancel',
+  'backend:start',
+  'backend:stop',
+  'backend:health',
+  'backend:service-status',
+  'backend:get-api-url',
+  'custom-tools:list',
+  'custom-tools:delete',
+  'custom-tools:execute',
+  'custom-tools:replace-json',
+  'custom-tools:toggle',
+  'custom-tools:upload-script',
+  'custom-tools:upsert',
+  'custom-avatars:list',
+  'custom-avatars:refresh',
+  'google-calendar:get-auth-url',
+  'google-calendar:check-auth-status',
+  'google-calendar:disconnect',
+  'google-calendar:list-events',
+  'google-calendar:create-event',
+  'google-calendar:update-event',
+  'google-calendar:delete-event',
+  'google-gmail:list-messages',
+  'google-gmail:get-message',
+  'scheduler:create-task',
+  'scheduler:get-all-tasks',
+  'scheduler:delete-task',
+  'scheduler:toggle-task',
+  'websocket:send-request',
+  'check-for-updates-manual',
+  'clear-updater-cache',
+  'codex-auth:status',
+  'codex-auth:start-login',
+  'codex-auth:disconnect',
+  'codex-models:list',
+  'codex-response:start',
+  'codex-response:cancel',
+  'codex-tool:result',
+])
+
+export const SEND_CHANNELS = new Set([
+  'resize',
+  'mini',
+  'close-app',
+  'restart-and-install-update',
+])
+
+export const EVENT_CHANNELS = new Set([
+  'main-process-message',
+  'overlay-shown',
+  'overlay-closed',
+  'screenshot-captured',
+  'settings-changed',
+  'custom-tools:updated',
+  'context-action',
+  'websocket:response',
+  'show-notification',
+  'global-hotkey-mic-toggle',
+  'global-hotkey-mute-playback',
+  'global-hotkey-take-screenshot',
+  'google-auth-loopback-success',
+  'google-auth-loopback-error',
+  'codex-auth-login-completed',
+  'codex-auth-status-changed',
+  'codex-auth-updated',
+  'codex-tool:execute',
+  'update-error',
+  'update-download-progress',
+  'update-downloaded',
+  'scheduler:reminder',
+  'kokoro-tts-progress',
+  'local-embedding-progress',
+])
+
+const DYNAMIC_EVENT_CHANNELS = [
+  /^http:stream:event:[A-Za-z0-9_-]{1,160}$/,
+  /^codex:stream:event:[A-Za-z0-9_-]{1,160}$/,
+]
+
+export function isDynamicEventChannel(channel: string): boolean {
+  return DYNAMIC_EVENT_CHANNELS.some(pattern => pattern.test(channel))
+}
+
+export function isAllowedInvokeChannel(channel: string): boolean {
+  return INVOKE_CHANNELS.has(channel)
+}
+
+export function isAllowedSendChannel(channel: string): boolean {
+  return SEND_CHANNELS.has(channel)
+}
+
+export function isAllowedEventChannel(channel: string): boolean {
+  return EVENT_CHANNELS.has(channel) || isDynamicEventChannel(channel)
+}

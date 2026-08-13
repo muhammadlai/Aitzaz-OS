@@ -1,0 +1,79 @@
+.indicator {
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+  @apply p-2 rounded-full touch-auto w-14 select-none;
+}
+.indicator:hover {
+  @apply bg-white/10;
+}
+.indicator.mini {
+  @apply w-4 h-4 p-0;
+}
+.indicator.indicator-side {
+  @apply rounded-none p-0;
+}
+.indicator.indicator-side:hover {
+  @apply bg-primary/0;
+}
+
+.btn-indicator-side {
+  transition: all 0.3s ease-in-out;
+  @apply bg-black/20 outline-none;
+}
+.btn-indicator-side:hover {
+  @apply bg-black/60;
+}
+.btn-indicator-side:hover.close {
+  @apply bg-red-500;
+}
+
+.inside-actions {
+  @apply opacity-0;
+  transition: all 0.3s ease-in-out;
+}
+
+.dragable {
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+}
+
+.status-message-container {
+  width: 50%;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.status-message-text {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.status-message-container .status-message-text.scrolling-text {
+  animation-name: scrollLeftAnimation;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+  position: absolute;
+  left: 50%;
+}
+
+@keyframes scrollLeftAnimation {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.status-message-container .status-message-text:not(.scrolling-text) {
+  position: relative;
+  left: auto;
+  transform: none;
+  animation: none !important;
+  display: inline;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
