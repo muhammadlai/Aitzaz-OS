@@ -1,0 +1,21 @@
+{
+  "name": "aitzaz-ai-pro-desktop",
+  "version": "1.0.0",
+  "description": "Aitzaz AI Pro — desktop shell for the self-hosted voice HUD. Connects to your Aitzaz/Hermes server over the LAN.",
+  "main": "main.js",
+  "author": "Aitzaz",
+  "license": "MIT",
+  "homepage": "https://github.com/muhammadlai/Aitzaz-OS",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
+  }
+}
