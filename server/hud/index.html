@@ -3,13 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>JARVIS</title>
+<title>Aitzaz AI Pro</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="JARVIS">
+<meta name="apple-mobile-web-app-title" content="Aitzaz AI">
 <meta name="theme-color" content="#050b14">
+<link rel="manifest" href="/hud/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/hud/icons/icon-192.png">
+<link rel="icon" type="image/png" href="/hud/icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="/hud/avatar/aitzaz-avatar.js"></script>
 <style>
 :root{
   --bg:#050b14; --panel:#081523cc; --line:#0e2c40;
@@ -55,9 +59,13 @@ header .sub{font-size:12px; letter-spacing:3px; color:var(--txt-dim)}
 #center{display:flex; flex-direction:column; align-items:center; justify-content:flex-start; position:relative; overflow:hidden}
 #reactorWrap{position:relative; width:min(46vh,440px); height:min(46vh,440px); cursor:pointer; flex-shrink:0}
 #reactor{width:100%; height:100%}
+#avatarHost{
+  position:absolute; inset:12%; pointer-events:none; z-index:2;
+}
+#avatarHost .aitzaz-avatar-canvas{width:100%; height:100%}
 #coreState{
   position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  pointer-events:none; font-family:'Orbitron';
+  pointer-events:none; font-family:'Orbitron'; z-index:3;
 }
 #coreState .st{font-size:15px; letter-spacing:6px; color:var(--cyan); text-shadow:0 0 14px #00e5ffaa}
 #coreState .hint{font-size:9px; letter-spacing:2px; color:var(--txt-dim); margin-top:6px}
@@ -67,7 +75,7 @@ header .sub{font-size:12px; letter-spacing:3px; color:var(--txt-dim)}
 }
 .msg{font-size:14.5px; line-height:1.35; padding:7px 11px; border:1px solid var(--line); background:#08152399; max-width:88%}
 .msg.you{align-self:flex-end; border-color:#205a6e; color:#cfeefb}
-.msg.jarvis{align-self:flex-start; border-left:2px solid var(--cyan)}
+.msg.aitzaz{align-self:flex-start; border-left:2px solid var(--cyan)}
 .msg.sys{align-self:center; color:var(--txt-dim); font-size:12px; border:none; background:none; padding:2px}
 #chatRow{display:flex; gap:8px; width:100%; max-width:680px; padding:8px 10px}
 #chatInput{
@@ -244,14 +252,14 @@ footer{
   <div id="pinMsg" style="font-size:12px; color:var(--txt-dim); letter-spacing:2px">&nbsp;</div>
 </div>
 <div id="boot">
-  <div id="bootLogo">J.A.R.V.I.S</div>
-  <div id="bootSub">HERMES NEURAL INTERFACE</div>
+  <div id="bootLogo">AITZAZ</div>
+  <div id="bootSub">AI PRO · PERSONAL ASSISTANT</div>
   <div id="bootLines"></div>
 </div>
 <div id="grid">
   <header>
-    <h1>J.A.R.V.I.S</h1>
-    <div class="sub">HERMES AGENT INTERFACE &nbsp;//&nbsp; <span id="connState">LINK DOWN</span></div>
+    <h1>AITZAZ</h1>
+    <div class="sub">AI PRO · PERSONAL ASSISTANT &nbsp;//&nbsp; <span id="connState">LINK DOWN</span></div>
     <div id="clock">--:--:--</div>
   </header>
 
@@ -260,10 +268,12 @@ footer{
     <div class="panel"><h2><span>VOICE LINK</span><span class="num">01</span></h2>
       <div class="kv"><span><span class="dot" id="wsDot"></span>Socket</span><b id="wsState">offline</b></div>
       <div class="kv"><span><span class="dot" id="micDot"></span>Microphone</span><b id="micState">idle</b></div>
+      <div class="kv"><span><span class="dot" id="listenDot"></span>Listening state</span><b id="listenState">STANDBY</b></div>
       <div class="kv"><span>Input level</span><b>&nbsp;</b></div>
       <div class="bar"><i id="levelBar"></i></div>
       <div style="margin-top:8px; display:flex; gap:6px">
-        <button class="btn" id="talkBtn" style="flex:1">ENGAGE VOICE</button>
+        <button class="btn" id="pauseBtn" style="flex:1">PAUSE</button>
+        <button class="btn amber" id="micBtn" style="flex:1">MIC OFF</button>
         <button class="btn danger" id="stopBtn">■ STOP</button>
       </div>
     </div>
@@ -282,8 +292,8 @@ footer{
       <button class="btn viewBtn" onclick="openView('CHAT','/chat')">▸ DASHBOARD CHAT</button>
     </div>
     <div class="panel"><h2><span>SESSION</span><span class="num">05</span></h2>
-      <div class="kv"><span>Conversation</span><b>jarvis-main</b></div>
-      <div class="kv"><span>Memory scope</span><b>jarvis:user:main</b></div>
+      <div class="kv"><span>Conversation</span><b>aitzaz-main</b></div>
+      <div class="kv"><span>Memory scope</span><b>aitzaz:user:main</b></div>
       <div class="kv"><span>Active sessions</span><b id="hSessions">—</b></div>
       <div class="kv"><span>Running agents</span><b id="hAgents">—</b></div>
     </div>
@@ -292,13 +302,14 @@ footer{
   <!-- CENTER -->
   <div id="center">
     <div id="approvals"></div>
-    <div id="reactorWrap" title="Click to talk">
+    <div id="reactorWrap" title="Aitzaz listens automatically — no button needed">
       <canvas id="reactor"></canvas>
-      <div id="coreState"><div class="st" id="stateLabel">STANDBY</div><div class="hint" id="stateHint">CLICK RING OR SPACE TO TALK</div></div>
+      <div id="avatarHost"></div>
+      <div id="coreState"><div class="st" id="stateLabel">INITIALIZING</div><div class="hint" id="stateHint">AITZAZ IS BOOTING</div></div>
     </div>
     <div id="feed"></div>
     <div id="chatRow">
-      <input id="chatInput" placeholder="Type to Hermes… (/new resets · voice: click the ring)" autocomplete="off">
+      <input id="chatInput" placeholder="Type to Aitzaz… (/new resets · voice listens automatically)" autocomplete="off">
       <button class="btn" id="sendBtn">SEND</button>
       <button class="btn" id="clearBtn" title="Clear the visible chat (history stays in Hermes)">CLR</button>
     </div>
@@ -352,26 +363,38 @@ footer{
   </div>
 
   <footer>
-    <span></span>
+    <span>AITZAZ AI PRO v1.0</span>
     <span id="footMsg">READY</span>
-    <span>NOUS HERMES AGENT v0.16</span>
+    <span>ENGINE: HERMES AGENT · NOUS RESEARCH</span>
   </footer>
 </div>
 
 <script>
 "use strict";
 /* ============================== state ============================== */
-const CONV = "jarvis-main";
+const CONV = "aitzaz-main";
 let ws=null, wsReady=false, capturing=false, state="standby";
+let mode="push_to_talk", streamArmed=false, micGranted=false, paused=false, micOn=false;
 let audioCtx=null, workletNode=null, mediaStream=null, srcNode=null;
 let playhead=0, activeSources=[], leftoverByte=null, audioArrived=false;
-let level=0, turns=0;
+let level=0, speakLevel=0, turns=0;
 
 const $=id=>document.getElementById(id);
 const feed=$("feed");
 
 /* ============================== clock ============================== */
 setInterval(()=>{const d=new Date();$("clock").textContent=d.toTimeString().slice(0,8)},500);
+
+/* ============================== avatar ============================= */
+const avatarHost=$("avatarHost");
+function initAvatar(){
+  try{ AitzazAvatar.init(avatarHost); }catch(err){ console.warn("avatar init failed:",err); }
+}
+function avatarState(st){
+  try{ AitzazAvatar.setState(st); }catch{}
+}
+function setAvatarLevels(){ try{ AitzazAvatar.setMicLevel(level); AitzazAvatar.setSpeakLevel(speakLevel); }catch{} }
+initAvatar();
 
 /* ============================== reactor ============================ */
 const cv=$("reactor"), ctx=cv.getContext("2d");
@@ -429,6 +452,17 @@ function setState(st,label,hint){
   state=st;
   $("stateLabel").textContent=label;
   if(hint!==undefined)$("stateHint").textContent=hint;
+  // drive the avatar from the same state machine
+  const AVATAR_MAP={standby:"idle",listening:"listening",speech:"speech",
+    thinking:"thinking",tool:"thinking",speaking:"speaking",error:"error"};
+  avatarState(AVATAR_MAP[st]||"idle");
+  // visible listening-state indicator (privacy)
+  const ls=$("listenState"), ld=$("listenDot");
+  if(ls&&ld){
+    ls.textContent=label;
+    const cls={LISTENING:"on",SPEECH:"on"}[label];
+    ld.className="dot "+((cls==="on")?"on":(label==="PAUSED"||label==="MIC OFF")?"off":"");
+  }
 }
 
 /* ============================== feed =============================== */
@@ -482,7 +516,12 @@ function showApproval(e){
 function wsUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location.host+"/ws"}
 function connect(){
   ws=new WebSocket(wsUrl()); ws.binaryType="arraybuffer";
-  ws.onopen=()=>{wsReady=true;$("wsDot").className="dot on";$("wsState").textContent="online";$("connState").textContent="LINK ACTIVE";$("footMsg").textContent="VOICE SERVER CONNECTED"};
+  ws.onopen=()=>{
+    wsReady=true;$("wsDot").className="dot on";$("wsState").textContent="online";
+    $("connState").textContent="LINK ACTIVE";$("footMsg").textContent="VOICE SERVER CONNECTED";
+    // Aitzaz is a continuous-listening assistant: re-arm on reconnect.
+    if(autoListenDesired&&!paused)armListening();
+  };
   ws.onclose=()=>{wsReady=false;$("wsDot").className="dot off";$("wsState").textContent="offline";$("connState").textContent="LINK DOWN";setState("standby","STANDBY");setTimeout(connect,3000)};
   ws.onerror=()=>{};
   ws.onmessage=ev=>{
@@ -490,6 +529,19 @@ function connect(){
     let e; try{e=JSON.parse(ev.data)}catch{return}
     if(e.type==="summon_panel"){ summonPanel(e); }
     else if(e.type==="dismiss_panels"){ dismissAllPanels(); }
+    else if(e.type==="listen_state"){
+      const map={booting:"standby",ready:"standby",listening:"listening",
+        speech:"speech",processing:"thinking",speaking:"speaking",
+        paused:"standby",mic_off:"standby",stopped:"standby"};
+      if(e.state==="listening"){ setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING"); }
+      else if(e.state==="speech"){ setState("speech","SPEECH DETECTED","HEARD YOU — PROCESSING NEXT"); }
+      else if(e.state==="processing"){ setState("thinking","PROCESSING","THINKING…"); }
+      else if(e.state==="paused"){ setState("standby","PAUSED","LISTENING PAUSED"); }
+      else if(e.state==="stopped"){ setState("standby","STANDBY","MIC RELEASED"); }
+      else { setState(map[e.state]||"standby","READY","AITZAZ IS READY"); }
+    }
+    else if(e.type==="speech_started"){ capturing=true; setState("speech","SPEECH DETECTED","HEARD YOU — PROCESSING NEXT"); }
+    else if(e.type==="speech_stopped"){ capturing=false; }
     else if(e.type==="partial_transcript"){ showLive(e.text); }
     else if(e.type==="transcript"){ clearLive(); if(e.text)addMsg("you",e.text); }
     else if(e.type==="run_started"){ currentRun=e.run_id; showStop(true); }
@@ -498,9 +550,10 @@ function connect(){
       if(e.state==="thinking"){setState("thinking","PROCESSING");showStop(true)}
       else if(e.state==="tool_use"){setState("tool","WORKING");addActivity("",e.tool||"tool",e.preview)}
       else if(e.state==="speaking")setState("speaking","SPEAKING");
-      else if(e.state==="stopped"){setState("standby","STANDBY");showStop(false);stopPlayback();addMsg("sys","run stopped")}
+      else if(e.state==="stopped"){showStop(false);stopPlayback();addMsg("sys","run stopped");if(mode==="continuous"&&streamArmed)setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING");else setState("standby","STANDBY")}
     }
-    else if(e.type==="error"){ clearLive(); addMsg("sys","error: "+e.message); setState("standby","STANDBY"); showStop(false); }
+    else if(e.type==="error"){ clearLive(); addMsg("sys","error: "+e.message); setState("error","ERROR",e.message); showStop(false);
+      if(mode==="continuous"&&streamArmed)setTimeout(()=>setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING"),2500); }
     else if(e.type==="done"){
       currentRun=null; showStop(false);
       const tm=e.timing||{};
@@ -508,8 +561,13 @@ function connect(){
       if(tm.end_of_speech_to_first_audio_seconds!=null)$("mFirst").textContent=tm.end_of_speech_to_first_audio_seconds+"s";
       if(tm.total_turn_seconds!=null)$("mTotal").textContent=tm.total_turn_seconds+"s";
       $("mBrain").textContent=tm.llm_provider||"—";
-      if(tm.response_text)addMsg("jarvis",tm.response_text);
-      setTimeout(()=>{if(state!=="listening")setState("standby","STANDBY")},400);
+      if(tm.response_text)addMsg("aitzaz",tm.response_text);
+      // back to the conversation loop: LISTEN, no button
+      if(mode==="continuous"&&streamArmed){
+        setTimeout(()=>{if(state!=="listening")setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING")},400);
+      }else{
+        setTimeout(()=>{if(state!=="listening")setState("standby","STANDBY")},400);
+      }
     }
   };
 }
@@ -532,6 +590,10 @@ function playChunk(buf){
   const i16=new Int16Array(bytes.buffer,bytes.byteOffset,bytes.length/2);
   const f32=new Float32Array(i16.length);
   for(let i=0;i<i16.length;i++)f32[i]=i16[i]/32768;
+  // voice level -> avatar mouth sync
+  let s=0; for(let i=0;i<i16.length;i+=8)s+=Math.abs(i16[i]);
+  speakLevel=Math.min(1,(s/(i16.length/8))/9000);
+  setAvatarLevels();
   const ab=audioCtx.createBuffer(1,f32.length,16000); ab.copyToChannel(f32,0);
   const src=audioCtx.createBufferSource(); src.buffer=ab; src.connect(audioCtx.destination);
   const t=Math.max(audioCtx.currentTime+0.06,playhead);
@@ -579,38 +641,79 @@ async function initMic(){
     srcNode=audioCtx.createMediaStreamSource(mediaStream);
     workletNode=new AudioWorkletNode(audioCtx,"pcm16k");
     workletNode.port.onmessage=e=>{
-      if(capturing&&wsReady)ws.send(e.data);
-      // level meter
+      if(streamArmed&&wsReady&&!paused&&micOn)ws.send(e.data);
+      // level meter -> avatar + HUD
       const a=new Int16Array(e.data); let s=0;
       for(let i=0;i<a.length;i+=8)s+=Math.abs(a[i]);
       level=Math.min(1,(s/(a.length/8))/9000);
-      if(capturing)$("levelBar").style.width=(level*100).toFixed(0)+"%";
+      setAvatarLevels();
+      if(streamArmed&&!paused&&micOn)$("levelBar").style.width=(level*100).toFixed(0)+"%";
     };
     srcNode.connect(workletNode);
   }
   $("micDot").className="dot on"; $("micState").textContent="ready";
+  micGranted=true;
 }
 
-/* ============================== talk flow ========================== */
-async function toggleTalk(){
-  if(!wsReady){addMsg("sys","voice server offline");return}
-  if(capturing){ // stop talking
-    capturing=false;
-    ws.send(JSON.stringify({type:"stop"}));
-    $("talkBtn").textContent="ENGAGE VOICE"; $("micState").textContent="ready"; $("levelBar").style.width="0%";
-    setState("thinking","PROCESSING");
-    return;
+/* ============ continuous listening (no Listen button needed) ============ */
+/* Aitzaz arms the microphone automatically on startup; the server-side VAD
+   decides when speech starts and stops. The user keeps three privacy
+   controls: PAUSE (suspend the stream), MIC OFF (disable the microphone),
+   and ■ STOP (halt the running agent turn).                            */
+
+async function armListening(){
+  if(!wsReady){autoListenDesired=true;return}   // re-arms in ws.onopen
+  if(!micOn){
+    try{await initMic()}catch(err){addMsg("sys","mic blocked: "+err.message);return}
+    micOn=true;
   }
-  try{await initMic()}catch(err){addMsg("sys","mic blocked: "+err.message);return}
-  stopPlayback();                       // barge-in
+  stopPlayback();                       // entering listen mode
   audioArrived=false;
-  ws.send(JSON.stringify({type:"start",sample_rate:16000,format:"pcm_s16le",channels:1,conversation:CONV}));
-  capturing=true;
-  $("talkBtn").textContent="■ STOP & SEND"; $("micState").textContent="LIVE";
-  setState("listening","LISTENING","CLICK AGAIN TO SEND");
+  if(mode!=="continuous"){
+    ws.send(JSON.stringify({type:"mode",mode:"continuous"})); mode="continuous";
+  }
+  ws.send(JSON.stringify({type:"audio_stream_start"}));
+  streamArmed=true; paused=false; capturing=false;
+  $("pauseBtn").textContent="PAUSE"; $("micBtn").textContent="MIC OFF";
+  $("micState").textContent="armed";
+  setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING");
 }
-$("talkBtn").onclick=toggleTalk;
-$("reactorWrap").onclick=toggleTalk;
+function pauseListening(){
+  if(!streamArmed)return;
+  paused=true;
+  if(wsReady)ws.send(JSON.stringify({type:"audio_stream_pause"}));
+  $("pauseBtn").textContent="RESUME"; $("micState").textContent="paused";
+  $("levelBar").style.width="0%";
+  setState("standby","PAUSED","LISTENING PAUSED — PRESS RESUME");
+}
+function resumeListening(){
+  if(!streamArmed)return armListening();
+  paused=false;
+  if(wsReady)ws.send(JSON.stringify({type:"audio_stream_resume"}));
+  $("pauseBtn").textContent="PAUSE"; $("micState").textContent="armed";
+  setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING");
+}
+function togglePause(){
+  if(!streamArmed){armListening();return}
+  if(paused)resumeListening(); else pauseListening();
+}
+function micOff(){
+  // privacy control: stop streaming mic audio entirely (OS permission stays
+  // with the browser — revoke it in the browser padlock if desired)
+  paused=true; streamArmed=false; micOn=false; capturing=false;
+  if(wsReady)ws.send(JSON.stringify({type:"audio_stream_stop"}));
+  if(mediaStream){mediaStream.getTracks().forEach(t=>{try{t.stop()}catch{}});mediaStream=null}
+  srcNode=null; workletNode=null;
+  $("micDot").className="dot off"; $("micState").textContent="off";
+  $("levelBar").style.width="0%";
+  $("micBtn").textContent="MIC ON";
+  setState("standby","MIC OFF","MICROPHONE DISABLED — PRESS MIC ON");
+}
+function toggleMic(){ if(micOn)micOff(); else armListening(); }
+
+$("pauseBtn").onclick=togglePause;
+$("micBtn").onclick=toggleMic;
+$("reactorWrap").onclick=togglePause;
 $("stopBtn").onclick=stopRun;
 
 /* ---- pop-up viewer ---- */
@@ -634,7 +737,7 @@ addEventListener("keydown",e=>{
   else stopRun();
 });
 addEventListener("keydown",e=>{
-  if(e.code==="Space"&&document.activeElement!==$("chatInput")){e.preventDefault();toggleTalk()}
+  if(e.code==="Space"&&document.activeElement!==$("chatInput")){e.preventDefault();togglePause()}
 });
 
 /* ============================== typed chat ========================= */
@@ -647,12 +750,15 @@ async function sendChat(){
     const j=await r.json();
     if(!r.ok)throw new Error(j.error||r.status);
     (j.tools||[]).forEach(t=>addActivity("",t.name,t.preview));
-    addMsg("jarvis",j.text||"(no reply)");
+    addMsg("aitzaz",j.text||"(no reply)");
     if(/^\/(new|reset|clear)\b/i.test(text)){     // slash reset → also clear the visible feed
       setTimeout(()=>{feed.innerHTML="";addMsg("sys","conversation reset");},800);
     }
   }catch(err){ addMsg("sys","chat error: "+err.message); }
-  if(state!=="listening")setState("standby","STANDBY");
+  if(state!=="listening"){
+    if(mode==="continuous"&&streamArmed&&!paused)setState("listening","LISTENING","JUST SPEAK — AITZAZ IS LISTENING");
+    else setState("standby","STANDBY");
+  }
 }
 $("sendBtn").onclick=sendChat;
 $("clearBtn").onclick=()=>{feed.innerHTML="";addMsg("sys","chat cleared (history stays in Hermes — type /new to reset the conversation)");};
@@ -830,7 +936,7 @@ function showPinGate(){
 }
 $("pinBtn").onclick=async()=>{
   const v=$("pinInput").value.trim(); if(!v)return;
-  document.cookie=`jarvis_token=${encodeURIComponent(v)}; path=/; max-age=31536000; secure; samesite=lax`;
+  document.cookie=`aitzaz_token=${encodeURIComponent(v)}; path=/; max-age=31536000; secure; samesite=lax`;
   const r=await fetch("/api/usage");
   if(r.status===401){$("pinMsg").textContent="ACCESS DENIED";$("pinInput").value="";return}
   location.reload();
@@ -841,9 +947,9 @@ checkAuth();
 /* ============================== boot sequence ====================== */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const BOOT_LINES=[
-  ["INITIALIZING NEURAL INTERFACE",380],["LOADING HUD MODULES",300],
-  ["CONNECTING HERMES CORE",650],["VOICE LINK ESTABLISHED",420],
-  ["MEMORY SYSTEMS SYNCHRONIZED",420],["WEAPONS OFFLINE. KETTLE ONLINE.",300],
+  ["INITIALIZING AITZAZ CORE",380],["LOADING AVATAR SYSTEM",300],
+  ["CONNECTING NEURAL LINK",650],["VOICE ENGINE ONLINE",420],
+  ["MEMORY SYSTEMS SYNCHRONIZED",420],["MIC STANDBY ARMED",300],
   ["ALL SYSTEMS NOMINAL",550],
 ];
 let bootRunning=false;
@@ -855,7 +961,6 @@ async function bootSequence(full){
   const bl=$("bootLines"); bl.innerHTML="";
   const scale=full?1:0.32;
   for(const [t,d] of BOOT_LINES){
-    if(!full&&t.startsWith("WEAPONS"))continue;   // easter egg only in full boot
     const div=document.createElement("div"); div.innerHTML="▸ "+t+" <b>OK</b>";
     bl.appendChild(div); await sleep(d*scale);
   }
@@ -877,9 +982,37 @@ async function bootSequence(full){
 addEventListener("keydown",e=>{
   if((e.key==="b"||e.key==="B")&&document.activeElement!==$("chatInput"))bootSequence(true);
 });
-bootSequence(new URLSearchParams(location.search).get("boot")==="full");
 
-addMsg("sys","Jarvis HUD online. Click the ring or press Space to talk.");
+/* =============== startup: boot -> auth -> AUTO-LISTEN ==================== */
+/* Aitzaz enters listening mode by itself once the HUD is ready. The browser
+   mic permission prompt IS the OS-level consent step; the user keeps
+   PAUSE / MIC OFF controls after that. No Listen button anywhere.            */
+let autoListenDesired=false;
+async function startAssistant(){
+  const ok=await checkAuth();
+  if(!ok)return;                 // PIN gate shown; page reloads after auth
+  addMsg("sys","Aitzaz AI Pro online. Listening automatically — just speak.");
+  autoListenDesired=true;
+  await armListening();
+  if(!streamArmed&&!paused&&!micOn){
+    // mic permission denied or browser needs a gesture — stay visible & ready
+    setState("standby","READY","ALLOW THE MICROPHONE, THEN TAP THE CORE");
+  }
+}
+// browsers may need one user gesture to unlock audio: any tap/click arms it
+addEventListener("pointerdown",()=>{
+  try{ if(audioCtx&&audioCtx.state==="suspended")audioCtx.resume(); }catch{}
+  if(autoListenDesired&&!paused&&!streamArmed&&micGranted&&wsReady)armListening();
+});
+
+bootSequence(new URLSearchParams(location.search).get("boot")==="full").then(startAssistant);
+
+/* ============================== service worker (PWA) ===================== */
+if("serviceWorker" in navigator){
+  addEventListener("load",()=>{
+    navigator.serviceWorker.register("/hud/sw.js").catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>

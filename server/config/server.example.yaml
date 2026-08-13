@@ -1,5 +1,9 @@
 # Copy to server.yaml and edit. Secrets live in ~/.hermes/.env (NOT here).
 
+assistant:
+  name: Aitzaz            # assistant identity spoken/shown to the user
+  greeting: "Aitzaz online. How can I help?"
+
 llm:
   provider: hermes            # primary brain: Hermes Agent API. "anthropic" = basic fallback mode.
   model: claude-haiku-4-5     # used only by the fallback provider
@@ -11,18 +15,19 @@ llm:
 hermes:
   base_url: http://127.0.0.1:8642   # Hermes Agent API server (loopback)
   api_key_env: API_SERVER_KEY       # read from ~/.hermes/.env
-  conversation: jarvis-main          # shared voice + HUD thread name
-  session_key: jarvis:user:main      # stable long-term memory scope
+  conversation: aitzaz-main          # shared voice + HUD thread name
+  session_key: aitzaz:user:main      # stable long-term memory scope
   timeout: 240
   ack_after_seconds: 0               # >0 = speak a short ack while the agent works
   ack_texts: ["On it.", "Still working.", "Almost there."]
   fallback_provider: anthropic
   instructions: >
-    You are speaking aloud through a voice pipeline. Replies are converted
-    to speech, so use plain conversational prose only: no markdown, no lists,
-    no code blocks. Default to one to three short sentences unless asked for
-    more detail. Speak numbers, dates, times and phone numbers as natural
-    spoken words. Never speak secrets, API keys, or passwords aloud.
+    You are Aitzaz, the user's personal AI assistant, speaking aloud through
+    a voice pipeline. Replies are converted to speech, so use plain
+    conversational prose only: no markdown, no lists, no code blocks.
+    Default to one to three short sentences unless asked for more detail.
+    Speak numbers, dates, times and phone numbers as natural spoken words.
+    Never speak secrets, API keys, or passwords aloud.
 
 stt:
   model: small.en           # LOCAL model (fallback if remote configured; primary otherwise)
@@ -31,6 +36,7 @@ stt:
   sample_rate: 16000
   partials: true            # live transcript while speaking
   partial_interval: 1.2     # seconds of new audio between partial passes
+  transcription_timeout: 30 # per-turn STT cap — a turn can never hang the loop
   # Optional GPU worker (worker/stt_server.py on any NVIDIA machine):
   # big-model accuracy at ~0.2s. Falls back to the local model automatically.
   # remote:
@@ -38,6 +44,23 @@ stt:
   #   url: http://192.168.1.50:8768/stt
   #   token_env: JARVIS_HUD_TOKEN
   #   timeout: 6
+
+# ---------------------------------------------------------------- listening
+# Aitzaz stays armed after startup: no Listen button. The VAD below decides
+# when speech begins/ends; audio is processed in RAM and discarded after each
+# utterance (nothing is recorded or stored).
+vad:
+  engine: silero            # silero (robust, needs torch) | energy (dependency-free)
+  threshold: 0.5            # speech probability above which a frame counts as speech
+  start_frames: 3           # consecutive speech frames to open the mic
+  end_frames: 25            # consecutive silence frames (~0.8 s) to end the utterance
+  pre_roll_ms: 350          # audio kept before speech onset so words aren't clipped
+  max_utterance_seconds: 20 # hard cap on a single utterance
+  barge_in: true            # speech while Aitzaz is talking interrupts the reply
+  ignore_while_speaking: false  # true = drop mic audio during replies (echo-proof mode)
+
+listening:
+  auto_start: true          # HUD/desktop client enter listening automatically on launch
 
 machines:                   # polled by /api/machines for the HUD panel (optional)
   - name: "GPU WORKER"
@@ -52,7 +75,7 @@ usage:
 
 server:
   host: 0.0.0.0              # wildcard bind (required for non-root port 443 on macOS)
-  port: 8765                 # plain ws:// for the Python push-to-talk client
+  port: 8765                 # plain ws:// for the Python desktop client
   tls_ports: [443, 8766]     # https/wss for the HUD (browser mic requires TLS)
   tls_cert: certs/cert.pem
   tls_key: certs/key.pem
@@ -61,7 +84,7 @@ server:
     target: http://127.0.0.1:9119
 
 security:
-  hud_token_env: JARVIS_HUD_TOKEN   # set in ~/.hermes/.env; unset = auth disabled
+  hud_token_env: JARVIS_HUD_TOKEN   # set in ~/.hermes/.env; AITZAZ_HUD_TOKEN also accepted
   extra_origin_hosts: []            # e.g. ["192.168.1.10"] if you open the HUD by raw IP
 
 voice:
@@ -73,5 +96,6 @@ voice:
 
 persona:                     # used only by the anthropic fallback path
   system_prompt: >
-    You are the spoken interface for the user's personal agent. Be direct,
-    calm, and concise. Default to one to three short sentences.
+    You are Aitzaz, the user's personal AI assistant, speaking through a
+    voice pipeline. Be direct, calm, and concise. Default to one to three
+    short sentences.

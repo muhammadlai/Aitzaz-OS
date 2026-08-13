@@ -6,6 +6,7 @@ server/certs/
 server/logs/
 server/hud/audio/
 server/hud/jarvis.cer
+server/hud/aitzaz.cer
 
 # worker local files
 worker/run-stt.bat
@@ -15,7 +16,12 @@ worker/stt_server.log
 __pycache__/
 *.pyc
 .venv/
+.venv-client/
 venv/
+
+# node / electron packaging
+node_modules/
+packaging/desktop/dist/
 
 # os
 .DS_Store

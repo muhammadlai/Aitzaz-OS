@@ -1,0 +1,30 @@
+# Aitzaz AI Pro — voice pipeline server dependencies
+# Python 3.11+ required. Recommended: create a venv (see README / docs/SETUP.md).
+#
+# The continuous-listening VAD needs torch; the silero-vad + torchaudio extras
+# below keep RealtimeSTT's silero engine functional.
+# macOS note: these are CPU wheels; on Apple Silicon they run under Rosetta
+# unless you install native arm64 wheels manually. GPU workers: see worker/.
+
+fastapi
+uvicorn==0.34.0   # pinned: known-good websockets implementation with this pipeline
+requests
+pyyaml
+numpy
+anthropic
+websockets
+psutil
+
+# --- local speech-to-text (RealtimeSTT + faster-whisper) ---
+# Version pin: the pipeline uses the AudioToTextRecorder feed_audio /
+# perform_final_transcription API present in the 0.3.x line.
+RealtimeSTT==0.3.104
+faster-whisper
+
+# --- voice activity detection (continuous listening, no Listen button) ---
+torch
+torchaudio
+silero-vad
+
+# --- desktop client audio (optional but recommended) ---
+sounddevice

@@ -10,7 +10,7 @@ gen() {
     -H "xi-api-key: $EK" -H "Content-Type: application/json" \
     -d "{\"text\":\"$2\",\"model_id\":\"eleven_flash_v2_5\"}" -o "hud/audio/boot_$1.mp3"
 }
-gen morning   "Systems online. Good morning, $NAME."
-gen afternoon "Systems online. Good afternoon, $NAME."
-gen evening   "Systems online. Good evening, $NAME."
+gen morning   "Aitzaz online. Good morning, $NAME."
+gen afternoon "Aitzaz online. Good afternoon, $NAME."
+gen evening   "Aitzaz online. Good evening, $NAME."
 ls -la hud/audio/

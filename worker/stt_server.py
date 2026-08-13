@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Jarvis GPU STT server — run on any machine with an NVIDIA GPU.
+"""Aitzaz AI Pro GPU STT worker — run on any machine with an NVIDIA GPU.
 
 Gives the voice pipeline big-model transcription (~0.2s for a sentence on a
 modern GPU) while the host machine keeps a small local model as fallback.
@@ -13,7 +13,7 @@ Setup (Windows or Linux, NVIDIA driver installed):
 Then point the voice server's `stt.remote.url` at http://this-machine:8768/stt
 
 API:
-    POST /stt    body: raw int16 16 kHz mono PCM, header X-Jarvis-Token
+    POST /stt    body: raw int16 16 kHz mono PCM, header X-Jarvis-Token (or X-Aitzaz-Token)
                  -> {"text": "..."}
     GET  /health -> {"status":"ok", ...}
 """
@@ -45,7 +45,7 @@ t0 = time.time()
 model = WhisperModel(MODEL_NAME, device="cuda", compute_type="float16")
 print(f"Model ready in {time.time()-t0:.1f}s", flush=True)
 
-app = FastAPI(title="Jarvis GPU STT")
+app = FastAPI(title="Aitzaz GPU STT")
 
 
 @app.get("/health")
@@ -55,7 +55,7 @@ async def health() -> dict:
 
 @app.post("/stt")
 async def stt(request: Request):
-    if TOKEN and request.headers.get("x-jarvis-token") != TOKEN:
+    if TOKEN and request.headers.get("x-jarvis-token") != TOKEN and request.headers.get("x-aitzaz-token") != TOKEN:
         return Response(status_code=401, content="auth required")
     body = await request.body()
     if len(body) < 3200:  # <0.1s of audio

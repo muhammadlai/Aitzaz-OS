@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Hermes LAN voice pipeline server (v3 — sessions, stop, approvals, partials).
+"""Aitzaz AI Pro voice pipeline server (based on the jarvis_ai Hermes LAN
+voice pipeline — sessions, stop, approvals, partials, plus continuous
+auto-listening).
 
 WebSocket protocol (client → server):
   {"type":"start", "sample_rate":16000, "format":"pcm_s16le", "channels":1,
-   "conversation": "jarvis-main"?}          begin a turn (mid-turn = barge-in)
+   "conversation": "aitzaz-main"?}          begin a turn (mid-turn = barge-in)
   <binary int16 16 kHz mono PCM chunks>
   {"type":"stop"}                            end of speech, process turn
   {"type":"stop_run"}                        halt the running agent turn
   {"type":"approval_decision", "run_id":..., "approval_id":..., "decision":"allow"|"deny"}
 
+  Continuous listening (no Listen button — Aitzaz stays armed):
+  {"type":"mode", "mode":"continuous"|"push_to_talk"}
+  {"type":"audio_stream_start"}              arm the microphone stream
+  {"type":"audio_stream_pause"|"audio_stream_resume"|"audio_stream_stop"}
+  <binary PCM chunks streamed while armed>   server-side VAD segments speech
+
 Server → client JSON events:
-  status, transcript, partial_transcript, agent_status{thinking|tool_use|speaking},
+  status, listen_state{state}, speech_started, speech_stopped, transcript,
+  partial_transcript, agent_status{thinking|tool_use|speaking},
   run_started{run_id}, approval_request{...}, error, done{timing}
 plus binary 16 kHz mono int16 PCM TTS audio.
 
@@ -25,6 +34,7 @@ import asyncio
 import json
 import os
 import re
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -40,6 +50,20 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from RealtimeSTT import AudioToTextRecorder
+
+ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = ROOT.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from core.assistant import (  # noqa: E402
+    ASSISTANT_NAME,
+    ASSISTANT_TITLE,
+    VERSION,
+    AssistantState,
+    ListeningMode,
+)
+from vad import make_vad  # noqa: E402
 
 try:
     import psutil
@@ -293,11 +317,31 @@ class HermesAPI:
 # ==================================================================== Pipeline
 
 
+def _preload_silero_hub() -> None:
+    """Pre-trust + pre-cache the Silero VAD torch.hub repo RealtimeSTT loads.
+
+    RealtimeSTT 0.3.x hard-fails AudioToTextRecorder construction when this
+    torch.hub.load raises, and on a first run it would prompt on stdin
+    ("Do you trust this repository? y/N") — fatal for a headless service.
+    Loading it once ourselves with trust_repo=True caches the model and
+    records trust permanently, so the recorder initializes offline afterwards.
+    """
+    import socket
+    socket.setdefaulttimeout(60)  # torch.hub's urllib fetch otherwise hangs forever
+    try:
+        import torch
+        torch.hub.load("snakers4/silero-vad", "silero_vad", trust_repo=True, verbose=False)
+    except Exception as exc:
+        print(f"Silero hub pre-load skipped ({type(exc).__name__}); "
+              f"STT recorder may need network on first run.", flush=True)
+
+
 class VoicePipelineServer:
     def __init__(self, cfg: dict):
         self.cfg = cfg
         self.turn_counter = 0
         self.hermes = HermesAPI(cfg)
+        _preload_silero_hub()
         self.stt_lock = asyncio.Lock()
         self.recorder = AudioToTextRecorder(
             model=cfg["stt"]["model"],
@@ -331,11 +375,22 @@ class VoicePipelineServer:
         # 2) local Whisper fallback
         sample_rate = int(self.cfg["stt"].get("sample_rate", 16000))
         samples = (np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0).copy()
+        # Guard: if the transcription worker died (e.g. the Whisper model
+        # failed to download on first run), perform_final_transcription loops
+        # forever waiting on its pipe. Bound it so a turn can never hang the
+        # conversation loop.
+        stt_timeout = float(self.cfg["stt"].get("transcription_timeout", 30))
         try:
             async with self.stt_lock:
                 self.recorder.feed_audio(samples, original_sample_rate=sample_rate)
-                text = await asyncio.to_thread(self.recorder.perform_final_transcription, samples, True)
+                text = await asyncio.wait_for(
+                    asyncio.to_thread(self.recorder.perform_final_transcription, samples, True),
+                    timeout=stt_timeout,
+                )
                 self.recorder.clear_audio_queue()
+        except asyncio.TimeoutError as exc:
+            print(f"local STT timed out after {stt_timeout}s — is the Whisper model loaded?", flush=True)
+            text = ""
         except Exception as exc:
             # near-silent audio can make whisper raise ("No clip timestamps found");
             # treat as empty transcript instead of failing the turn
@@ -628,24 +683,42 @@ load_env()
 CFG = load_config()
 HERMES = HermesAPI(CFG)   # lightweight API client - independent of the STT pipeline
 PIPELINE: VoicePipelineServer | None = None
+_PIPELINE_FAILED = False
 
 
 _PIPELINE_LOCK = threading.Lock()
 
 
-def get_pipeline() -> VoicePipelineServer:
+def get_pipeline() -> VoicePipelineServer | None:
     """Lock prevents the four uvicorn listeners' startup hooks from racing
     into concurrent recorder inits (which crashed three of the four lifespans
-    and silently killed the TLS ports)."""
-    global PIPELINE
-    if PIPELINE is None:
-        with _PIPELINE_LOCK:
-            if PIPELINE is None:
-                PIPELINE = VoicePipelineServer(CFG)
+    and silently killed the TLS ports).
+
+    Construction happens once, usually in the background warm thread. If it is
+    still in progress (or it failed — e.g. first run without network to fetch
+    models), this returns None WITHOUT blocking the event loop: the server
+    keeps serving the HUD, /api/status and chat, and voice turns report a
+    clear error instead of killing the WebSocket."""
+    global PIPELINE, _PIPELINE_FAILED
+    if PIPELINE is None and not _PIPELINE_FAILED:
+        if _PIPELINE_LOCK.acquire(blocking=False):
+            try:
+                if PIPELINE is None and not _PIPELINE_FAILED:
+                    try:
+                        PIPELINE = VoicePipelineServer(CFG)
+                    except Exception as exc:
+                        _PIPELINE_FAILED = True
+                        print(f"Voice pipeline init failed ({type(exc).__name__}: {exc}); "
+                              f"voice turns disabled until restart.", flush=True)
+            finally:
+                _PIPELINE_LOCK.release()
+        else:
+            print("Voice pipeline still initializing (background warm) — "
+                  "voice turns available shortly.", flush=True)
     return PIPELINE
 
 
-app = FastAPI(title="Hermes Voice Pipeline")
+app = FastAPI(title=f"{ASSISTANT_TITLE} Voice Pipeline", version=VERSION)
 
 
 @app.on_event("startup")
@@ -673,27 +746,30 @@ _WARM_STARTED = False
 
 # ------------------------------------------------------------------ Auth
 
-ALLOWED_ORIGIN_HOSTS = {"jarvis.local", "jarvis", "localhost", "127.0.0.1"}
+ALLOWED_ORIGIN_HOSTS = {"jarvis.local", "jarvis", "aitzaz.local", "aitzaz", "localhost", "127.0.0.1"}
 ALLOWED_ORIGIN_HOSTS |= set((CFG.get("security") or {}).get("extra_origin_hosts") or [])
 
 
 def hud_token() -> str | None:
     env_name = (CFG.get("security") or {}).get("hud_token_env", "JARVIS_HUD_TOKEN")
-    return os.environ.get(env_name) or None
+    # AITZAZ_HUD_TOKEN wins if set, JARVIS_HUD_TOKEN remains a supported alias
+    # (keeps the bundled Hermes plugin / GPU worker / e2e test working as-is).
+    return os.environ.get("AITZAZ_HUD_TOKEN") or os.environ.get(env_name) or None
 
 
 def _request_authed(request: Request) -> bool:
     token = hud_token()
     if not token:
         return True
-    supplied = request.headers.get("x-jarvis-token") or request.cookies.get("jarvis_token")
+    supplied = (request.headers.get("x-jarvis-token") or request.headers.get("x-aitzaz-token")
+                    or request.cookies.get("aitzaz_token") or request.cookies.get("jarvis_token"))
     return supplied == token
 
 
 @app.middleware("http")
 async def api_auth_middleware(request: Request, call_next):
     if request.url.path.startswith("/api/") and not _request_authed(request):
-        return Response(status_code=401, content="jarvis auth required")
+        return Response(status_code=401, content="aitzaz auth required")
     return await call_next(request)
 
 
@@ -709,7 +785,8 @@ def _ws_allowed(ws: WebSocket) -> bool:
     token = hud_token()
     if not token:
         return True
-    return ws.cookies.get("jarvis_token") == token or ws.query_params.get("token") == token
+    return (ws.cookies.get("aitzaz_token") == token or ws.cookies.get("jarvis_token") == token
+                or ws.query_params.get("token") == token)
 
 
 # --------------------------------------------------------------- HUD + proxy
@@ -756,7 +833,7 @@ async def hud_chat(request: Request) -> JSONResponse:
     """Typed chat from the HUD — same Hermes session as voice."""
     body = await request.json()
     text = (body.get("input") or "").strip()
-    conversation = body.get("conversation") or (CFG.get("hermes") or {}).get("conversation", "jarvis-main")
+    conversation = body.get("conversation") or (CFG.get("hermes") or {}).get("conversation", "aitzaz-main")
     if not text:
         return JSONResponse({"error": "empty input"}, status_code=400)
     out: dict = {"text": "", "tools": [], "run_id": None}
@@ -951,6 +1028,30 @@ async def root() -> RedirectResponse:
     return RedirectResponse("/hud/")
 
 
+@app.get("/api/status")
+async def api_status(request: Request) -> JSONResponse:
+    """Assistant-level status: identity, version and per-client listening state.
+
+    Gives every frontend (and the user) a single place to see exactly what
+    Aitzaz is doing — Listening / Speech / Processing / Speaking / Paused —
+    which is the visible privacy indicator required for always-on listening.
+    """
+    return JSONResponse({
+        "assistant": ASSISTANT_NAME,
+        "product": ASSISTANT_TITLE,
+        "version": VERSION,
+        "clients": _ws_client_summary(),
+        "privacy": {
+            "audio_stored": False,
+            "audio_sent_off_machine": False,
+            "stt": "local",
+            "note": "Microphone audio is processed in RAM only and discarded "
+                    "after transcription. Text is sent to the configured AI "
+                    "provider and TTS provider for the turn.",
+        },
+    })
+
+
 if HUD_DIR.exists():
     app.mount("/hud", StaticFiles(directory=str(HUD_DIR), html=True), name="hud")
 
@@ -960,7 +1061,7 @@ if HUD_DIR.exists():
 # this second app reverse-proxies the entire dashboard over TLS, stripping
 # frame-blocking headers. Served on its own port (see server.dashboard_proxy).
 
-dash_app = FastAPI(title="Hermes Dashboard TLS Proxy")
+dash_app = FastAPI(title="Aitzaz Dashboard TLS Proxy")
 _STRIP_HEADERS = {"x-frame-options", "content-security-policy", "content-length",
                   "transfer-encoding", "connection", "content-encoding"}
 
@@ -968,7 +1069,7 @@ _STRIP_HEADERS = {"x-frame-options", "content-security-policy", "content-length"
 @dash_app.middleware("http")
 async def dash_auth_middleware(request: Request, call_next):
     if not _request_authed(request):
-        return Response(status_code=401, content="jarvis auth required")
+        return Response(status_code=401, content="aitzaz auth required")
     return await call_next(request)
 
 
@@ -1045,11 +1146,17 @@ class ConnState:
     timing: TurnTiming | None = None
     turn_task: asyncio.Task | None = None
     current_run_id: str | None = None
-    conversation: str = "jarvis-main"
+    conversation: str = "aitzaz-main"
     spoken_sentences: list = field(default_factory=list)
     interrupt_note: str | None = None
     partial_task: asyncio.Task | None = None
     last_partial_bytes: int = 0
+    # ---- continuous listening ----
+    mode: str = ListeningMode.PUSH_TO_TALK
+    stream_armed: bool = False      # client is streaming mic audio
+    vad: object | None = None       # per-connection VAD engine
+    speech_active: bool = False     # VAD says the user is speaking
+    listen_state: str = AssistantState.READY
 
 
 async def _run_turn(ws: WebSocket, pipeline: VoicePipelineServer, conn: ConnState) -> None:
@@ -1076,6 +1183,10 @@ async def _run_turn(ws: WebSocket, pipeline: VoicePipelineServer, conn: ConnStat
             await pipeline.stream_response_audio(ws, transcript_sent, timing, conn)
             timing.total_done_monotonic = time.perf_counter()
             await ws.send_json({"type": "done", "turn_id": timing.turn_id, "timing": timing.summary()})
+        # Conversation loop: after a reply (or a no-speech result), Aitzaz
+        # returns to LISTENING on its own (continuous mode) — no button.
+        if conn.mode == ListeningMode.CONTINUOUS and conn.stream_armed:
+            await _set_listen_state(ws, conn, AssistantState.LISTENING)
     except asyncio.CancelledError:
         timing.errors.append("turn cancelled (barge-in or stop)")
         raise
@@ -1116,9 +1227,9 @@ async def _cancel_active_turn(ws: WebSocket, pipeline: VoicePipelineServer, conn
             await ws.send_json({"type": "status", "message": f"Stop failed: {exc}"})
 
 
-def _maybe_schedule_partial(ws: WebSocket, pipeline: VoicePipelineServer, conn: ConnState) -> None:
+def _maybe_schedule_partial(ws: WebSocket, pipeline: VoicePipelineServer | None, conn: ConnState) -> None:
     stt_cfg = CFG.get("stt") or {}
-    if not stt_cfg.get("partials", True) or not conn.recording:
+    if pipeline is None or not stt_cfg.get("partials", True) or not conn.recording:
         return
     if conn.partial_task and not conn.partial_task.done():
         return
@@ -1139,6 +1250,114 @@ def _maybe_schedule_partial(ws: WebSocket, pipeline: VoicePipelineServer, conn: 
     conn.partial_task = asyncio.create_task(run())
 
 
+async def _set_listen_state(ws: WebSocket, conn: ConnState, state: str, force: bool = False, **extra) -> None:
+    """Broadcast a listening-state change to one client (privacy visibility)."""
+    if conn.listen_state == state and not force:
+        return
+    conn.listen_state = state
+    payload = {"type": "listen_state", "state": state}
+    payload.update(extra)
+    try:
+        await ws.send_json(payload)
+    except Exception:
+        pass
+
+
+def _attach_vad(ws: WebSocket, conn: ConnState) -> None:
+    """Create the per-connection VAD engine wired into the conversation loop.
+
+    The callbacks re-fetch get_pipeline() when they fire, so a pipeline that
+    finishes warming mid-session is picked up automatically."""
+    loop = asyncio.get_running_loop()
+
+    def on_speech_start() -> None:
+        if conn.mode != ListeningMode.CONTINUOUS or not conn.stream_armed:
+            return
+        conn.speech_active = True
+
+        async def started() -> None:
+            pipeline = get_pipeline()
+            if pipeline is None:
+                # STT engine unavailable (e.g. models not downloaded yet):
+                # tell the user instead of failing silently.
+                await _set_listen_state(ws, conn, AssistantState.LISTENING)
+                await ws.send_json({"type": "error",
+                                    "message": "Speech engine unavailable — run the server "
+                                               "with network access once to fetch models."})
+                return
+            # Barge-in: speech during a running turn cancels it (interrupt-aware).
+            if conn.turn_task is not None and not conn.turn_task.done():
+                await _cancel_active_turn(ws, pipeline, conn)
+                await ws.send_json({"type": "agent_status", "state": "stopped"})
+            conn.audio_chunks = []
+            conn.last_partial_bytes = 0
+            conn.recording = True
+            conn.timing = TurnTiming(turn_id=pipeline.next_turn_id())
+            conn.timing.audio_start_monotonic = time.perf_counter()
+            conn.timing.stt_model = CFG["stt"]["model"]
+            await _set_listen_state(ws, conn, AssistantState.SPEECH)
+            await ws.send_json({"type": "speech_started"})
+
+        asyncio.run_coroutine_threadsafe(started(), loop)
+
+    def on_speech_end(pcm: bytes) -> None:
+        if conn.mode != ListeningMode.CONTINUOUS or not conn.stream_armed:
+            return
+        conn.speech_active = False
+
+        async def ended() -> None:
+            if not conn.recording or conn.timing is None:
+                return
+            conn.recording = False
+            conn.timing.end_of_speech_monotonic = time.perf_counter()
+            if pcm:
+                conn.audio_chunks.append(pcm)
+            await ws.send_json({"type": "speech_stopped"})
+            pipeline = get_pipeline()
+            if pipeline is None:
+                conn.timing = None
+                await _set_listen_state(ws, conn, AssistantState.LISTENING)
+                return
+            await _set_listen_state(ws, conn, AssistantState.PROCESSING)
+            conn.turn_task = asyncio.create_task(_run_turn(ws, pipeline, conn))
+
+        asyncio.run_coroutine_threadsafe(ended(), loop)
+
+    try:
+        conn.vad = make_vad(CFG, on_speech_start=on_speech_start, on_speech_end=on_speech_end)
+    except Exception as exc:
+        conn.vad = None
+        print(f"VAD unavailable ({exc}); continuous listening disabled for this client.", flush=True)
+
+
+def _handle_continuous_audio(ws: WebSocket, pipeline: VoicePipelineServer | None, conn: ConnState, chunk: bytes) -> None:
+    """Route streamed mic audio through VAD while the client is armed."""
+    if conn.vad is None:
+        return
+    # Optional echo guard: while the agent turn is active (processing/speaking),
+    # drop incoming audio instead of letting TTS playback trigger barge-in.
+    if CFG.get("vad", {}).get("ignore_while_speaking") and conn.turn_task is not None and not conn.turn_task.done():
+        return
+    samples = np.frombuffer(chunk, dtype=np.int16).astype(np.float32) / 32768.0
+    conn.vad.feed(samples)
+    if conn.recording:
+        # VAD is in speech: buffer the utterance (for partials + final STT).
+        conn.audio_chunks.append(chunk)
+        _maybe_schedule_partial(ws, pipeline, conn)
+
+
+def _ws_client_summary() -> list[dict]:
+    summary = []
+    for ws in list(WS_CLIENTS):
+        conn = getattr(ws, "aitzaz_conn", None)
+        summary.append({
+            "state": conn.listen_state if conn else None,
+            "mode": conn.mode if conn else None,
+            "stream_armed": conn.stream_armed if conn else False,
+        })
+    return summary
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     if not _ws_allowed(ws):
@@ -1147,8 +1366,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await ws.accept()
     WS_CLIENTS.add(ws)
     pipeline = get_pipeline()
-    conn = ConnState(conversation=(CFG.get("hermes") or {}).get("conversation", "jarvis-main"))
-    await ws.send_json({"type": "status", "message": "Hermes voice server connected."})
+    conn = ConnState(conversation=(CFG.get("hermes") or {}).get("conversation", "aitzaz-main"))
+    ws.aitzaz_conn = conn  # type: ignore[attr-defined]
+    await ws.send_json({"type": "status", "message": f"{ASSISTANT_TITLE} voice server connected."})
+    await _set_listen_state(ws, conn, AssistantState.READY, force=True)
     try:
         while True:
             message = await ws.receive()
@@ -1156,6 +1377,11 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 event = json.loads(message["text"])
                 etype = event.get("type")
                 if etype == "start":
+                    if pipeline is None:
+                        await ws.send_json({"type": "error",
+                                            "message": "Speech engine unavailable — run the server "
+                                                       "with network access once to fetch models."})
+                        continue
                     await _cancel_active_turn(ws, pipeline, conn)  # barge-in
                     if event.get("conversation"):
                         conn.conversation = str(event["conversation"])
@@ -1169,6 +1395,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 elif etype == "stop":
                     if conn.timing is None:
                         await ws.send_json({"type": "error", "message": "Received stop before start."})
+                        continue
+                    if pipeline is None:
+                        conn.timing = None
+                        await ws.send_json({"type": "error",
+                                            "message": "Speech engine unavailable — run the server "
+                                                       "with network access once to fetch models."})
                         continue
                     conn.recording = False
                     conn.timing.end_of_speech_monotonic = time.perf_counter()
@@ -1189,18 +1421,61 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     }
                     res = await asyncio.to_thread(pipeline.hermes.post_approval, run_id, body)
                     await ws.send_json({"type": "status", "message": f"Approval sent ({res['status_code']})."})
+                # ---------------- continuous listening (Aitzaz auto mode) ----
+                elif etype == "mode":
+                    mode = event.get("mode")
+                    if mode not in (ListeningMode.CONTINUOUS, ListeningMode.PUSH_TO_TALK):
+                        await ws.send_json({"type": "error", "message": f"Unknown mode: {mode}"})
+                        continue
+                    conn.mode = mode
+                    await ws.send_json({"type": "status", "message": f"Listening mode: {mode}."})
+                elif etype == "audio_stream_start":
+                    if conn.vad is None:
+                        _attach_vad(ws, conn)
+                    conn.stream_armed = True
+                    if conn.vad is not None:
+                        await _set_listen_state(ws, conn, AssistantState.LISTENING)
+                        await ws.send_json({"type": "status", "message": "Continuous listening armed — speak whenever you like."})
+                    else:
+                        await ws.send_json({"type": "error", "message": "VAD unavailable; continuous listening disabled."})
+                elif etype == "audio_stream_pause":
+                    conn.stream_armed = False
+                    await _set_listen_state(ws, conn, AssistantState.PAUSED)
+                elif etype == "audio_stream_resume":
+                    conn.stream_armed = True
+                    if conn.vad is None:
+                        _attach_vad(ws, conn)
+                    if conn.turn_task is not None and not conn.turn_task.done():
+                        await _set_listen_state(ws, conn, AssistantState.PROCESSING)
+                    else:
+                        await _set_listen_state(ws, conn, AssistantState.LISTENING)
+                elif etype == "audio_stream_stop":
+                    conn.stream_armed = False
+                    conn.speech_active = False
+                    conn.recording = False
+                    if conn.vad is not None:
+                        conn.vad.reset()
+                    conn.vad = None
+                    await _set_listen_state(ws, conn, AssistantState.STOPPED)
                 else:
                     await ws.send_json({"type": "error", "message": f"Unknown event type: {etype}"})
             elif "bytes" in message and message["bytes"] is not None:
-                if conn.recording:
+                if conn.mode == ListeningMode.CONTINUOUS:
+                    if conn.stream_armed:
+                        _handle_continuous_audio(ws, pipeline, conn, message["bytes"])
+                elif conn.recording:
                     conn.audio_chunks.append(message["bytes"])
                     _maybe_schedule_partial(ws, pipeline, conn)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
+        # WebSocketDisconnect: normal client close under uvicorn.
+        # RuntimeError: newer starlette raises this on receive-after-close
+        # (seen via TestClient); treat identically.
         if conn.turn_task and not conn.turn_task.done():
             conn.turn_task.cancel()
         print("Client disconnected", flush=True)
     finally:
         WS_CLIENTS.discard(ws)
+
 
 
 def main() -> int:
@@ -1210,7 +1485,11 @@ def main() -> int:
     tls_ports = server.get("tls_ports") or ([server["tls_port"]] if server.get("tls_port") else [])
     cert = server.get("tls_cert")
     key = server.get("tls_key")
-    print(f"Starting Hermes voice server on ws://{host}:{port}/ws", flush=True)
+    print("=" * 62, flush=True)
+    print(f"  {ASSISTANT_TITLE}  ·  v{VERSION}  ·  personal AI assistant", flush=True)
+    print(f"  Brain: Hermes Agent · STT: local Whisper · Voice: ElevenLabs", flush=True)
+    print("=" * 62, flush=True)
+    print(f"Starting voice pipeline server on ws://{host}:{port}/ws", flush=True)
     if tls_ports and cert and key and (ROOT / cert).exists() and (ROOT / key).exists():
         servers = [uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))]
         for tp in tls_ports:

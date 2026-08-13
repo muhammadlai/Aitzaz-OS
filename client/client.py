@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
-"""Windows LAN voice client for the Hermes voice pipeline.
+"""Aitzaz AI Pro desktop voice client (based on the jarvis_ai Windows LAN
+voice client).
 
-Captures 16 kHz mono PCM, runs openWakeWord locally unless push-to-talk is used,
-streams audio to the Mac server, and plays returned audio through the default
-Windows output device.
+Captures 16 kHz mono PCM and streams it to the voice pipeline server.
+
+Modes:
+  --continuous    (default) Aitzaz stays armed: mic streams, the server's VAD
+                  detects speech, and the conversation loop runs on its own.
+                  No Listen button, no wake word — just talk.
+  --wake-word     say "hey aitzaz" (openWakeWord, local) to start a turn.
+  --push-to-talk  press Enter to start/stop each turn (classic mode).
+
+Response audio is played through the default output device.
 """
 
 from __future__ import annotations
@@ -106,8 +114,14 @@ async def playback_worker(ws, output_device: int | None, stop_event: asyncio.Eve
                     print(f"Server error: {event.get('message', 'unknown error')}")
                 elif event_type == "status":
                     print(f"Server: {event.get('message', '')}")
+                elif event_type == "listen_state":
+                    print(f"[{event.get('state', '?').upper()}]")
+                elif event_type == "speech_started":
+                    print(">> speech detected — listening to you…")
+                elif event_type == "speech_stopped":
+                    print(">> end of speech — processing…")
                 elif event_type == "transcript":
-                    print(f"Transcript: {event.get('text', '')}")
+                    print(f"You: {event.get('text', '')}")
                 elif event_type == "done":
                     if pcm_buffer:
                         await asyncio.to_thread(_play_buffer, bytes(pcm_buffer))
@@ -273,14 +287,49 @@ async def wake_word_loop(
         print("Utterance sent. Waiting for response audio...")
 
 
+async def continuous_loop(
+    ws,
+    audio_q: queue.Queue[bytes],
+    stop_event: asyncio.Event,
+) -> None:
+    """Aitzaz continuous mode: keep the mic streaming; the SERVER's VAD
+    decides when speech starts/ends and runs the conversation loop. The
+    client never records or stores anything — it forwards live PCM only.
+    """
+    print("Continuous listening mode. Aitzaz is armed — just speak naturally.")
+    print("Say something; Aitzaz detects speech, processes, replies, and returns to listening.")
+    print("Press Ctrl+C to quit.")
+    await ws.send(json.dumps({"type": "mode", "mode": "continuous"}))
+    await ws.send(json.dumps({"type": "audio_stream_start"}))
+
+    while not stop_event.is_set():
+        try:
+            chunk = await asyncio.to_thread(audio_q.get, True, 0.2)
+        except queue.Empty:
+            continue
+        if stop_event.is_set():
+            break
+        await ws.send(chunk)
+
+    try:
+        await ws.send(json.dumps({"type": "audio_stream_stop"}))
+    except Exception:
+        pass
+    print("Continuous listening stopped.")
+
+
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Hermes LAN voice client for Windows")
+    parser = argparse.ArgumentParser(description="Aitzaz AI Pro desktop voice client")
     parser.add_argument("--server", default=DEFAULT_SERVER, help=f"WebSocket server URL, default {DEFAULT_SERVER}")
     parser.add_argument("--input-device", type=int, default=None, help="sounddevice input device index")
     parser.add_argument("--output-device", type=int, default=None, help="sounddevice output device index")
-    parser.add_argument("--list-devices", action="store_true", help="list Windows audio devices and exit")
+    parser.add_argument("--list-devices", action="store_true", help="list audio devices and exit")
+    parser.add_argument("--continuous", action="store_true", dest="continuous", default=True,
+                        help="continuous auto-listening mode (default) — server VAD segments speech")
     parser.add_argument("--push-to-talk", action="store_true", help="bypass wake word; press Enter to start and stop streaming")
-    parser.add_argument("--wake-word", default=DEFAULT_WAKE_WORD, help=f"openWakeWord stock model name, default {DEFAULT_WAKE_WORD}")
+    parser.add_argument("--wake-word", action="store_true", dest="wake_word", default=False,
+                        help=f"wake-word mode; say the wake word to start a turn")
+    parser.add_argument("--wake-word-name", default=DEFAULT_WAKE_WORD, help=f"openWakeWord stock model name, default {DEFAULT_WAKE_WORD}")
     parser.add_argument("--wake-threshold", type=float, default=0.55, help="wake detection threshold")
     parser.add_argument("--max-record-seconds", type=float, default=8.0, help="maximum utterance length after wake word")
     return parser.parse_args()
@@ -335,16 +384,21 @@ async def main_async() -> int:
                         await player
                     except asyncio.CancelledError:
                         pass
-                else:
+                elif args.wake_word:
                     await wake_word_loop(
                         ws,
                         audio_q,
                         stop_event,
                         args.output_device,
-                        args.wake_word,
+                        args.wake_word_name,
                         args.wake_threshold,
                         args.max_record_seconds,
                     )
+                    await player
+                else:
+                    # Aitzaz continuous mode — the default. No Listen button:
+                    # the server VAD drives the whole conversation loop.
+                    await continuous_loop(ws, audio_q, stop_event)
                     await player
     except OSError as exc:
         print(f"Could not connect to server at {args.server}.")

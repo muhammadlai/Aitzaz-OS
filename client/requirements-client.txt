@@ -1,0 +1,12 @@
+# Aitzaz AI Pro — desktop voice client dependencies (client/client.py)
+# Windows/Linux/macOS. PyAudio needs PortAudio installed:
+#   Windows: `pip install PyAudio` (prebuilt wheels)
+#   Linux:   `sudo apt install portaudio19-dev python3-dev` first
+#   macOS:   `brew install portaudio` first
+
+numpy
+sounddevice
+websockets
+
+# optional — only needed for --wake-word mode
+openwakeword

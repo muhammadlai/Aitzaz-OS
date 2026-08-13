@@ -1,18 +1,40 @@
 # Architecture & Protocols
 
-## How a voice turn flows
+## The Aitzaz conversation loop (continuous listening)
 
-1. Browser captures mic at 16 kHz mono (AudioContext created at 16 kHz —
+```
+READY ─► LISTEN (VAD armed, mic streaming) ─► speech_started ─► capture
+  ▲                                                        │
+  │                                                speech_stopped (VAD)
+  │                                                        ▼
+  └── listen_state=LISTENING ◄── done ◄── TTS ◄── brain ◄── STT
+```
+
+The client keeps the mic stream open while Aitzaz is armed; `server/vad.py`
+runs on the server (Silero VAD, with an adaptive-energy fallback) and detects
+speech onset/offset. Audio handling is RAM-only:
+
+- armed + silence: a ~350 ms pre-roll ring buffer (everything else discarded
+  frame by frame),
+- speech: utterance frames buffered (partial transcription every ~1.2 s),
+- end of speech: utterance handed to STT, then dropped; the VAD re-arms.
+
+Server-side VAD means every client platform (browser, Python, future mobile)
+gets identical behavior, and no platform has to ship a VAD runtime.
+
+## How a voice turn flows (per utterance)
+
+1. Browser/client captures mic at 16 kHz mono (AudioContext created at 16 kHz —
    avoids resampling artifacts that wreck Whisper accuracy) and streams int16
    PCM over WebSocket `/ws`.
 2. While you speak, the server runs incremental Whisper passes every ~1.2 s
    and emits `partial_transcript` events (live captions).
-3. On stop: final transcription — the server first tries the optional **GPU
-   STT worker** (`stt.remote`, big model, ~0.2 s) and falls back to local
-   Whisper if it's unreachable — then the transcript goes to Hermes via its **Sessions
-   API** (`POST /api/sessions/{id}/chat/stream`, SSE). Session ids persist in
-   `logs/hermes_sessions.json` per conversation name, so memory survives
-   restarts. Typed chat (`/api/chat`) uses the *same* session.
+3. On end of speech: final transcription — the server first tries the optional
+   **GPU STT worker** (`stt.remote`, big model, ~0.2 s) and falls back to local
+   Whisper if it's unreachable — then the transcript goes to Hermes via its
+   **Sessions API** (`POST /api/sessions/{id}/chat/stream`, SSE). Session ids
+   persist in `logs/hermes_sessions.json` per conversation name, so memory
+   survives restarts. Typed chat (`/api/chat`) uses the *same* session.
 4. SSE events parsed: `run.started` (run id → STOP support), `assistant.delta`
    (text), `tool.started` (name + preview → HUD activity), `assistant.completed`
    (incl. `interrupted` flag), `run.completed` (token usage), `*approval*`
@@ -20,6 +42,8 @@
 5. Text is sentence-split, markdown/think-block-stripped, **secret-redacted**,
    then each sentence streams through ElevenLabs back to the client as raw PCM
    while generation continues.
+6. `done` → `listen_state: listening` → the loop repeats. No client button
+   press is involved anywhere.
 
 Why the Sessions API and not `/v1/responses` or `/v1/runs`: on Hermes v0.16,
 sessions are the only surface that combines named persistent memory, run ids,
@@ -30,33 +54,49 @@ tool events, and approval events in one stream.
 Client → server (JSON + binary):
 
 ```
-{"type":"start","sample_rate":16000,"format":"pcm_s16le","channels":1,"conversation":"jarvis-main"?}
+{"type":"start","sample_rate":16000,"format":"pcm_s16le","channels":1,"conversation":"aitzaz-main"?}
 <binary int16 PCM chunks>
 {"type":"stop"}
 {"type":"stop_run"}
 {"type":"approval_decision","run_id":...,"approval_id":...,"decision":"allow"|"deny"}
+
+Continuous listening (Aitzaz auto mode — additive, backward compatible):
+{"type":"mode","mode":"continuous"|"push_to_talk"}     choose the listen mode
+{"type":"audio_stream_start"}                           arm mic streaming
+{"type":"audio_stream_pause"}                           privacy: suspend listening
+{"type":"audio_stream_resume"}                          resume listening
+{"type":"audio_stream_stop"}                            privacy: stop + release mic
+<binary PCM streamed while armed>   server VAD segments speech (client-side VAD not needed)
 ```
 
 `start` during an active turn = barge-in: the server cancels the turn, stops
 the Hermes run, records the last spoken sentence, and prefixes the next turn's
 input with an interruption note so the agent's memory matches what you heard.
+In continuous mode, *speaking while Aitzaz is talking* is an automatic
+barge-in (configurable via `vad.barge_in`).
 
 Server → client:
 
 ```
-status · partial_transcript · transcript · run_started{run_id}
+status · listen_state{state} · speech_started · speech_stopped
+partial_transcript · transcript · run_started{run_id}
 agent_status{state: thinking|tool_use(+tool,preview)|speaking|stopped}
 approval_request{data,run_id} · error · done{timing}
 <binary TTS PCM — frames split at arbitrary byte boundaries; buffer odd bytes>
 ```
 
+`listen_state.state` ∈ `booting|ready|listening|speech|processing|speaking|
+paused|mic_off|stopped` — the always-visible listening indicator every
+frontend must render (privacy requirement).
+
 ## HTTP endpoints (voice server)
 
 | Endpoint | Purpose |
 |---|---|
-| `/hud/` | the HUD (static, single file) |
+| `/hud/` | the HUD + avatar system + PWA (manifest/sw/icons) |
 | `/api/hermes/{path}` | **allowlist** proxy to Hermes API, injects the bearer key (GET: health, capabilities, skills, toolsets, jobs, sessions; POST: v1/responses only) |
 | `/api/chat` | typed chat turn on the shared voice session |
+| `/api/status` | assistant identity, version, per-client listening state + privacy notes |
 | `/api/machines` | host psutil stats + remote workers from config |
 | `/api/usage` | local token/char tally + ElevenLabs quota (needs user_read on the key) |
 | `/api/summon` | broadcasts a holographic media panel (`{media, src, title, position}` or `{action:"dismiss"}`) to every connected HUD over its WebSocket — this is what the bundled `hud_display` Hermes plugin calls |
@@ -64,7 +104,7 @@ approval_request{data,run_id} · error · done{timing}
 
 ## Auth model
 
-`JARVIS_HUD_TOKEN` (env) gates `/api/*`, the dashboard proxy, and
+`AITZAZ_HUD_TOKEN` (env, with `JARVIS_HUD_TOKEN` as an accepted alias) gates `/api/*`, the dashboard proxy, and
 browser-originated WebSockets (Origin allowlist + cookie). Native clients (the
 PTT client, test scripts) send no Origin header and are exempt — the
 threat model is a malicious *website* doing cross-origin requests against your
@@ -105,7 +145,7 @@ behind Hermes; the second is the Whisper model size.
     listen socket — the next spawn then fails its first bind and uvicorn's
     SystemExit cancels ALL listeners. Stop by PORT ownership
     (`lsof -ti tcp:PORT -sTCP:LISTEN | xargs kill -9`) — shipped in
-    `scripts/jarvis-stop.sh`.
+    `scripts/aitzaz-stop.sh`.
 11. **Agent tool-choice**: SOUL.md prose cannot redirect the model away from
     attractive built-in tools (it kept "showing" videos in its own invisible
     browser); a first-class plugin tool with an explicit schema wins

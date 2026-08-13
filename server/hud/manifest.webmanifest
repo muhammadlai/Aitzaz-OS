@@ -1,0 +1,27 @@
+{
+  "name": "Aitzaz AI Pro",
+  "short_name": "Aitzaz",
+  "description": "Personal voice AI assistant: continuous listening, holographic avatar, Hermes Agent brain. Installable on desktop and mobile.",
+  "id": "/hud/",
+  "start_url": "/hud/",
+  "scope": "/hud/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#050b14",
+  "theme_color": "#050b14",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/hud/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/hud/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/hud/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Talk to Aitzaz",
+      "short_name": "Talk",
+      "url": "/hud/",
+      "description": "Open the assistant and start talking"
+    }
+  ]
+}

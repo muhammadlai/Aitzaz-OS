@@ -1,14 +1,15 @@
-"""Handlers: POST to the Jarvis voice server's /api/summon broadcast."""
+"""Handlers: POST to the Aitzaz voice server's /api/summon broadcast."""
 import json
 import os
 import urllib.request
 
 # Plain-HTTP loopback port of the voice server (no TLS dance needed locally).
-SUMMON_URL = os.environ.get("JARVIS_SUMMON_URL", "http://127.0.0.1:8765/api/summon")
+SUMMON_URL = os.environ.get("AITZAZ_SUMMON_URL",
+                            os.environ.get("JARVIS_SUMMON_URL", "http://127.0.0.1:8765/api/summon"))
 
 
 def _post(payload: dict) -> str:
-    token = os.environ.get("JARVIS_HUD_TOKEN", "")
+    token = os.environ.get("AITZAZ_HUD_TOKEN") or os.environ.get("JARVIS_HUD_TOKEN", "")
     req = urllib.request.Request(
         SUMMON_URL, data=json.dumps(payload).encode(), method="POST",
         headers={"Content-Type": "application/json", "X-Jarvis-Token": token},

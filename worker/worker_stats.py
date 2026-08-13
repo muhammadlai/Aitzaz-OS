@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tiny stats agent for a GPU render/worker machine.
 
-Serves JSON at http://0.0.0.0:8767/stats for the Jarvis HUD machines panel.
+Serves JSON at http://0.0.0.0:8767/stats for the Aitzaz HUD machines panel.
 
 Setup on the worker (once):
     pip install psutil
@@ -66,5 +66,5 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Jarvis worker stats agent on http://0.0.0.0:{PORT}/stats")
+    print(f"Aitzaz worker stats agent on http://0.0.0.0:{PORT}/stats")
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()

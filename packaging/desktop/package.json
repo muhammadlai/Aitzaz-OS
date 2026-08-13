@@ -1,0 +1,38 @@
+{
+  "name": "aitzaz-ai-pro",
+  "productName": "Aitzaz AI Pro",
+  "version": "1.0.0",
+  "description": "Aitzaz AI Pro desktop app — wraps the voice-pipeline HUD (local server) in an installable desktop window.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "Aitzaz",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.aitzaz.aipro",
+    "productName": "Aitzaz AI Pro",
+    "files": ["main.js", "preload.js", "icon.png"],
+    "win": {
+      "target": ["nsis"]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.productivity"
+    }
+  }
+}

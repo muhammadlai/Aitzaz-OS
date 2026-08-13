@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Aitzaz AI Pro
+Comment=Personal voice AI assistant (continuous listening)
+Exec=sh -c 'cd %APP_DIR%/server && .venv/bin/python ../server/server.py' 
+Icon=%APP_DIR%/packaging/desktop/icon.png
+Terminal=true
+Type=Application
+Categories=Utility;ArtificialIntelligence;

@@ -1,4 +1,4 @@
-"""Jarvis HUD display plugin - registration."""
+"""Aitzaz HUD display plugin - registration."""
 from . import schemas, tools
 
 
