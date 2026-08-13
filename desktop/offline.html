@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aitzaz AI Pro — Offline</title>
+  <style>
+    :root {
+      --bg: #050b14; --cyan: #35e0ff; --cyan-dim: #14a7c4;
+      --text: #d7f6ff; --muted: #7fa7b8; --danger: #ff5d6c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "Segoe UI", system-ui, Roboto, sans-serif;
+      background: radial-gradient(1000px 600px at 50% -10%, #0a1a30 0%, var(--bg) 60%);
+      color: var(--text); min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 24px; user-select: none;
+    }
+    .card { max-width: 440px; text-align: center; }
+    .dot {
+      width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%;
+      border: 2px solid var(--danger);
+      box-shadow: 0 0 22px rgba(255,93,108,.5);
+      display: flex; align-items: center; justify-content: center; font-size: 26px; color: var(--danger);
+    }
+    h1 { font-size: 20px; margin: 0 0 10px; letter-spacing: 2px; }
+    p { color: var(--muted); font-size: 13px; line-height: 1.7; }
+    p code { color: var(--cyan); background: #0a1a2c; padding: 1px 6px; border-radius: 5px; }
+    .row { display: flex; gap: 12px; margin-top: 20px; }
+    button {
+      flex: 1; padding: 13px; border: none; border-radius: 10px; cursor: pointer;
+      font-size: 14px; font-weight: 700; letter-spacing: 1px;
+      background: #0a1a2c; color: var(--text); border: 1px solid var(--cyan-dim);
+    }
+    button.primary { background: linear-gradient(90deg, #0c7d99, var(--cyan-dim)); color: #04121c; border: none; }
+    button:hover { filter: brightness(1.15); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="dot">!</div>
+    <h1>SERVER NAHIN MILA</h1>
+    <p id="reason">Aitzaz server tak pohanch nahi saka.</p>
+    <p>
+      Check karo ke server wali machine on hai, aap dono ek hi network (Wi-Fi/LAN)
+      par ho, aur address sahi hai — jaise <code>https://192.168.1.20</code>.
+    </p>
+    <div class="row">
+      <button id="settings">SETTINGS</button>
+      <button id="retry" class="primary">RETRY</button>
+    </div>
+  </div>
+
+  <script>
+    const q = new URLSearchParams(location.search);
+    const reason = q.get('reason');
+    if (reason) document.getElementById('reason').textContent = reason;
+    document.getElementById('retry').onclick = () => window.aitzaz.retry();
+    document.getElementById('settings').onclick = () => window.aitzaz.openSettings();
+  </script>
+</body>
+</html>

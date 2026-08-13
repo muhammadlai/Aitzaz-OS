@@ -16,6 +16,25 @@ local (Whisper on CPU).
 
 ▶ **[Watch the demo on YouTube](https://youtu.be/YNI9pm3h6x8)** — live transcription, agent tool calls, holographic media panels, and the cinematic boot, all in real time.
 
+## Desktop app (download & install)
+
+Don't want to keep a browser tab open? A native **desktop app** wraps the HUD
+in its own window and connects to your server over the LAN — Windows, macOS,
+Linux, and **Chromebook** (via the built-in Linux environment / Crostini).
+
+- **Download installers** from the
+  [Releases](https://github.com/muhammadlai/Aitzaz-OS/releases) page:
+  `Aitzaz-AI-Pro-Windows-<ver>-Setup.exe`, `Aitzaz-AI-Pro-Mac-<ver>.dmg`,
+  `Aitzaz-AI-Pro-Linux-<ver>-<arch>.deb` / `.AppImage`.
+- **Chromebook, install, and build-from-source steps:** see
+  [docs/DESKTOP.md](docs/DESKTOP.md).
+
+The app lives in [`desktop/`](desktop/) (Electron) and is packaged with
+electron-builder. A ready-made GitHub Actions workflow ships in
+[`docs/workflows/build-desktop.yml`](docs/workflows/build-desktop.yml) — copy it
+to `.github/workflows/` and it builds installers for every platform on each
+`v*` tag and attaches them to a GitHub Release.
+
 ## What it does
 
 
@@ -131,6 +150,7 @@ evening.
 server/          FastAPI voice pipeline + HUD host (the core of this project)
 server/hud/      single-file HUD (vanilla JS, no build step)
 server/scripts/  start/stop/health/smoke + cert & boot-audio generators
+desktop/         Electron desktop shell (Windows/macOS/Linux + Chromebook installers)
 client/          optional Windows/Linux push-to-talk Python client (wake word capable)
 worker/          optional GPU sidecars: big-model STT server + stats agent for the Machines panel
 hermes-plugin/   Hermes tool plugin: lets the agent summon/dismiss HUD media panels
