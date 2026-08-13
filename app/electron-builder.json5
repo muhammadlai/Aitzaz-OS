@@ -74,6 +74,7 @@
     ],
     category: 'Utility',
     icon: 'public/app_logo.png',
+    maintainer: 'Aitzaz <126396112+muhammadlai@users.noreply.github.com>',
     artifactName: 'Aitzaz-AI-Pro-Linux-${version}-${arch}.${ext}',
   },
 }
