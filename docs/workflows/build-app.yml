@@ -16,54 +16,63 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            cmd: npm run build
             artifact: Aitzaz-AI-Pro-Linux-*
           - os: windows-latest
-            cmd: npm run build
             artifact: Aitzaz-AI-Pro-Windows-*
           - os: macos-latest
-            cmd: npm run build
             artifact: Aitzaz-AI-Pro-Mac-*
     runs-on: ${{ matrix.os }}
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false' # skip code signing
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: app/package-lock.json
 
-      - uses: actions/setup-go@v5
+      - name: Setup Go 1.24
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: "1.24"
 
-      - name: Install dependencies
+      - name: Install npm dependencies
         working-directory: app
         run: npm ci
+
+      - name: Build Go backend
+        working-directory: app
+        run: npm run build:go
 
       - name: Rebuild native modules for Electron
         working-directory: app
         run: npm run rebuild
 
+      - name: Build renderer + Electron main/preload (Vite)
+        working-directory: app
+        run: npm run build:web
+
       - name: Create empty app-config (Google OAuth placeholders)
         working-directory: app
         run: echo '{"VITE_GOOGLE_CLIENT_ID":"","VITE_GOOGLE_CLIENT_SECRET":""}' > app-config.json
 
-      - name: Build installers (Go backend + Vite + electron-builder)
+      - name: Package installers (electron-builder)
         working-directory: app
-        run: ${{ matrix.cmd }} --publish never
+        run: npx electron-builder --publish never
 
       - name: Collect artifacts
         shell: bash
         working-directory: app
         run: |
+          echo "=== build output tree ==="
+          find release -maxdepth 2 -type f -print
           mkdir -p dist-artifacts
           find release -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.deb' -o -name '*.AppImage' \) \
             -exec cp {} dist-artifacts/ \;
+          echo "=== collected artifacts ==="
           ls -la dist-artifacts
 
       - uses: actions/upload-artifact@v4
