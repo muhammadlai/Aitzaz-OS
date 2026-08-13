@@ -51,6 +51,8 @@ function saveConfig(cfg) {
 function hudUrl(raw) {
   let u = String(raw || '').trim();
   if (!u) return '';
+  // Only http/https are valid; reject any other explicit scheme (ftp:// etc.).
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(u) && !/^https?:\/\//i.test(u)) return '';
   if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
   let parsed;
   try {
