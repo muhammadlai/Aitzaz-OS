@@ -5,7 +5,7 @@
   asar: true,
   productName: 'Aitzaz AI Pro',
   directories: {
-    output: 'release/${version}',
+    output: 'release',
   },
   publish: [
     {
@@ -65,7 +65,13 @@
   },
   compression: 'store',
   linux: {
-    target: ['AppImage', { target: 'deb', arch: ['x64', 'arm64'] }],
+    target: [
+      'AppImage',
+      {
+        target: 'deb',
+        arch: ['x64'],
+      },
+    ],
     category: 'Utility',
     icon: 'public/app_logo.png',
     artifactName: 'Aitzaz-AI-Pro-Linux-${version}-${arch}.${ext}',
