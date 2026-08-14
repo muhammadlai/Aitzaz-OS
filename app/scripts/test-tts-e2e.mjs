@@ -29,24 +29,39 @@ const keyMasked = `${'•'.repeat(12)}${apiKey.slice(-4)}`
 
 const openai = new OpenAI({ apiKey, timeout: 60_000, maxRetries: 1 })
 
+async function chatOnce(model, messages) {
+  const chat = await openai.chat.completions.create({
+    model,
+    messages,
+    max_tokens: 80,
+  })
+  return chat.choices[0]?.message?.content?.trim()
+}
+
 async function main() {
   console.log(`[E2E] OpenAI key: ${keyMasked}`)
 
-  // 1) Real AI chat response (same responses API family the app uses).
+  // 1) Real AI chat response (same SDK family the app uses).
   console.log('[E2E] Step 1: requesting AI chat completion...')
-  const chat = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages: [
-      { role: 'user', content: 'Reply with one short greeting sentence as Aitzaz, a desktop AI assistant.' },
-    ],
-    max_tokens: 80,
-  })
-  const aiText = chat.choices[0]?.message?.content?.trim()
+  const promptMessages = [
+    { role: 'user', content: 'Reply with one short greeting sentence as Aitzaz, a desktop AI assistant.' },
+  ]
+  let aiText = ''
+  let chatModel = ''
+  for (const model of ['gpt-4o-mini', 'gpt-4o', 'gpt-3.5-turbo']) {
+    try {
+      aiText = (await chatOnce(model, promptMessages)) || ''
+      chatModel = model
+      if (aiText) break
+    } catch (err) {
+      console.warn(`[E2E] chat model ${model} failed: ${String(err?.message || err).replace(new RegExp(apiKey, 'g'), '[REDACTED]')}`)
+    }
+  }
   if (!aiText) {
-    console.error('ERROR: chat completion returned no text.')
+    console.error('ERROR: chat completion returned no text on any model.')
     process.exit(1)
   }
-  console.log(`[E2E] AI response: "${aiText}"`)
+  console.log(`[E2E] AI response (${chatModel}): "${aiText}"`)
 
   // 2) Real TTS synthesis of that exact response (same call the app makes in
   //    apiService.openAITTS: gpt-4o-mini-tts + voice + speed + mp3).
@@ -62,7 +77,7 @@ async function main() {
   const arrayBuffer = await ttsResponse.arrayBuffer()
   const bytes = Buffer.from(arrayBuffer)
 
-  const outFile = path.join(process.cwd(), 'e2e-tts-output.mp3')
+  const outFile = process.env.E2E_TTS_OUT || path.join(process.cwd(), 'e2e-tts-output.mp3')
   fs.writeFileSync(outFile, bytes)
   console.log(`[E2E] Step 3: wrote ${bytes.length} bytes -> ${outFile}`)
 
