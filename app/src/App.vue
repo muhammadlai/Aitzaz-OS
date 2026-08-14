@@ -1,10 +1,13 @@
 <template>
-  <template v-if="showOnboarding || showSettings || showOverlay">
+  <template
+    v-if="showAuth || showOnboarding || showSettings || showOverlay"
+  >
     <Overlay v-if="showOverlay" />
+    <AuthScreen v-if="showAuth" />
     <OnboardingWizard v-if="showOnboarding" />
     <SettingsWindow v-if="showSettings" />
   </template>
-  <Main v-else />
+  <Main v-else-if="!isBootstrapping" />
   <div
     role="alert"
     class="alert alert-vertical sm:alert-horizontal update-notification"
@@ -43,17 +46,20 @@
 import { useRoute } from 'vue-router'
 import Main from './components/Main.vue'
 import Overlay from './components/Overlay.vue'
+import AuthScreen from './components/auth/AuthScreen.vue'
 import OnboardingWizard from './components/wizard/OnboardingWizard.vue'
 import SettingsWindow from './components/SettingsWindow.vue'
 import { useSettingsStore } from './stores/settingsStore'
 import { useGeneralStore } from './stores/generalStore'
 import { useConversationStore } from './stores/conversationStore'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useAuthStore } from './stores/authStore'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 const route = useRoute()
 const settingsStore = useSettingsStore()
 const generalStore = useGeneralStore()
 const conversationStore = useConversationStore()
+const authStore = useAuthStore()
 
 const showOverlay = computed(() => {
   return route.hash === '#overlay'
@@ -63,11 +69,45 @@ const showSettings = computed(() => {
   return route.hash === '#settings'
 })
 
+// While the persisted session and settings are being restored we keep the
+// preload splash instead of flashing the assistant (or the login screen).
+const isBootstrapping = computed(
+  () =>
+    authStore.isRestoring ||
+    !settingsStore.initialLoadAttempted ||
+    settingsStore.isLoading
+)
+
+const showAuth = computed(() => {
+  if (
+    isBootstrapping.value ||
+    showSettings.value ||
+    showOverlay.value
+  ) {
+    return false
+  }
+  return !authStore.isAuthenticated
+})
+
 const showOnboarding = computed(() => {
-  if (!settingsStore.initialLoadAttempted) {
+  if (isBootstrapping.value) {
+    return false
+  }
+  if (!authStore.isAuthenticated) {
     return false
   }
   return route.hash !== '#settings' && route.hash !== '#overlay' && !settingsStore.settings.onboardingCompleted
+})
+
+const AUTH_WINDOW_SIZE = { width: 520, height: 700 }
+const MAIN_WINDOW_SIZE = { width: 500, height: 500 }
+
+watch(showAuth, isAuthVisible => {
+  if (isAuthVisible) {
+    window.electron?.resize?.(AUTH_WINDOW_SIZE)
+  } else if (authStore.isAuthenticated && !showOnboarding.value) {
+    window.electron?.resize?.(MAIN_WINDOW_SIZE)
+  }
 })
 
 const updateAvailable = ref(false)
@@ -89,7 +129,7 @@ const handleContextAction = async (data: any) => {
 }
 
 onMounted(async () => {
-  await settingsStore.loadSettings()
+  await Promise.all([settingsStore.loadSettings(), authStore.restoreSession()])
 
   if (window.aliceIPC) {
     window.aliceIPC.on('update-downloaded', info => {

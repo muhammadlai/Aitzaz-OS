@@ -50,7 +50,9 @@ func (h *Handler) SynthesizeSpeech(w http.ResponseWriter, r *http.Request) {
 		req.Voice = "en-US-amy-medium"
 	}
 
-	audioData, err := ttsService.Synthesize(r.Context(), req.Text, req.Voice)
+	// A zero speed keeps the backend default; SynthesizeWithSpeed clamps
+	// the value into Piper's valid range.
+	audioData, err := ttsService.SynthesizeWithSpeed(r.Context(), req.Text, req.Voice, req.Speed)
 	if err != nil {
 		h.writeError(w, http.StatusInternalServerError, "TTS synthesis failed: "+err.Error())
 		return

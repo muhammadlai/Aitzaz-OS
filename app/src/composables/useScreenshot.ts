@@ -61,8 +61,8 @@ export function useScreenshot() {
         if (takingScreenShot.value) {
           if (!screenshotReady.value) {
             statusMessage.value = isRecordingRequested.value
-              ? 'Listening...'
-              : 'Stand by'
+              ? '🎙 Listening...'
+              : '💤 Idle'
           }
           takingScreenShot.value = false
           window.aliceIPC?.invoke('focus-main-window')

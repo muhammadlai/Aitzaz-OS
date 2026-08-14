@@ -35,7 +35,7 @@ export const useGeneralStore = defineStore('general', () => {
     updateMessageToolCallsByTempId,
   } = historyManager
   const chatInput = ref<string>('')
-  const statusMessage = ref<string>('Stand by')
+  const statusMessage = ref<string>('💤 Idle')
   const openSidebar = ref<boolean>(false)
   const isMinimized = ref<boolean>(false)
   const takingScreenShot = ref<boolean>(false)
@@ -54,6 +54,7 @@ export const useGeneralStore = defineStore('general', () => {
   const attachedFile = ref<File | null>(null)
   const awaitingWakeWord = ref<boolean>(false)
   const wakeWordDetected = ref<boolean>(false)
+  const isSpeechPaused = ref<boolean>(false)
 
   const setAudioState = (newState: AudioState) => {
     if (audioState.value === newState) return
@@ -61,28 +62,28 @@ export const useGeneralStore = defineStore('general', () => {
     switch (newState) {
       case 'IDLE':
         statusMessage.value = isRecordingRequested.value
-          ? 'Mic Ready'
-          : 'Stand by'
+          ? '🎙 Mic Ready'
+          : '💤 Idle'
         break
       case 'LISTENING':
         statusMessage.value = awaitingWakeWord.value
-          ? 'Waiting for wake word...'
-          : 'Listening...'
+          ? '🎙 Waiting for wake word...'
+          : '🎙 Listening...'
         break
       case 'PROCESSING_AUDIO':
-        statusMessage.value = 'Processing audio...'
+        statusMessage.value = '🎙 Processing audio...'
         break
       case 'WAITING_FOR_RESPONSE':
-        statusMessage.value = 'Thinking...'
+        statusMessage.value = '🧠 Thinking...'
         break
       case 'SPEAKING':
-        statusMessage.value = 'Speaking...'
+        statusMessage.value = '🔊 Speaking...'
         break
       case 'CONFIG':
-        statusMessage.value = 'Setting up...'
+        statusMessage.value = '⚙️ Setting up...'
         break
       case 'GENERATING_IMAGE':
-        statusMessage.value = 'Creating image...'
+        statusMessage.value = '🎨 Creating image...'
         break
       default:
         statusMessage.value = 'Unknown state'
@@ -239,6 +240,7 @@ export const useGeneralStore = defineStore('general', () => {
     attachedFile,
     awaitingWakeWord,
     wakeWordDetected,
+    isSpeechPaused,
     setAudioState,
     queueAudioForPlayback,
     addMessageToHistory,

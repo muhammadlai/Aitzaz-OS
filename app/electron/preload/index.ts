@@ -108,6 +108,20 @@ contextBridge.exposeInMainWorld('settingsAPI', {
     ipcRenderer.invoke('settings:save', settings),
 })
 
+// --------- Local account & session API (main process owns the secrets) ---------
+contextBridge.exposeInMainWorld('authAPI', {
+  signUp: (payload: {
+    email: string
+    password: string
+    name?: string
+    remember?: boolean
+  }) => ipcRenderer.invoke('auth:sign-up', payload),
+  login: (payload: { email: string; password: string; remember?: boolean }) =>
+    ipcRenderer.invoke('auth:login', payload),
+  logout: () => ipcRenderer.invoke('auth:logout'),
+  getSession: () => ipcRenderer.invoke('auth:session'),
+})
+
 contextBridge.exposeInMainWorld('electronPaths', {
   getRendererDistPath: () => ipcRenderer.invoke('get-renderer-dist-path'),
 })

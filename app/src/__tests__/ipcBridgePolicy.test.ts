@@ -15,6 +15,15 @@ describe('renderer IPC bridge policy', () => {
     expect(isAllowedSendChannel('desktop:executeCommand')).toBe(false)
   })
 
+  it('exposes the account/session IPC surface', () => {
+    expect(isAllowedInvokeChannel('auth:sign-up')).toBe(true)
+    expect(isAllowedInvokeChannel('auth:login')).toBe(true)
+    expect(isAllowedInvokeChannel('auth:logout')).toBe(true)
+    expect(isAllowedInvokeChannel('auth:session')).toBe(true)
+    expect(isAllowedEventChannel('auth:session-changed')).toBe(true)
+    expect(isAllowedInvokeChannel('auth:delete-account')).toBe(false)
+  })
+
   it('allows stream event ids without allowing arbitrary event channels', () => {
     expect(isAllowedEventChannel('codex:stream:event:request-123')).toBe(true)
     expect(

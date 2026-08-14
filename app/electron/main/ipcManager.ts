@@ -103,6 +103,7 @@ import {
   registerTakeScreenshotHotkey,
 } from './hotkeyManager'
 import { backendManager } from './backendManager'
+import { redactSensitiveText, redactErrorForLog } from './logRedaction'
 import type { CustomToolDefinition } from '../../types/customTools'
 import {
   loadCustomToolsFromDisk,
@@ -1248,7 +1249,7 @@ export function registerIPCHandlers(): void {
 
         console.log(
           `[IPC http:request] Making ${method} request to:`,
-          validatedUrl
+          redactSensitiveText(validatedUrl)
         )
 
         const response = await axios({
@@ -1270,7 +1271,7 @@ export function registerIPCHandlers(): void {
           headers: response.headers,
         }
       } catch (error: any) {
-        console.error('[IPC http:request] Error:', error)
+        console.error('[IPC http:request] Error:', redactErrorForLog(error))
         return {
           success: false,
           error: error.message,

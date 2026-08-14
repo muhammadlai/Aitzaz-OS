@@ -73,6 +73,7 @@
           v-if="activeTab === 'core'"
           :current-settings="currentSettings"
           @update:setting="updateCurrentSetting"
+          @test-connection="handleSaveAndTestSettings"
         />
 
         <AssistantSettingsTab

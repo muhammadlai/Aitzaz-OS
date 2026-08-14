@@ -1101,6 +1101,39 @@ async function buildGoBackend() {
   const outputName = isWindows ? 'alice-backend.exe' : 'alice-backend'
   const outputPath = path.join('..', 'resources', 'backend', outputName)
 
+  // Detect whether the Go toolchain is available. When it is not (for example
+  // a renderer-only development checkout), reuse an existing backend binary
+  // instead of failing the whole rebuild. CI always has Go, so release builds
+  // still compile a fresh backend.
+  let goAvailable = true
+  try {
+    execSync(isWindows ? 'go version' : 'command -v go >/dev/null 2>&1', {
+      stdio: 'ignore',
+      shell: true,
+    })
+  } catch {
+    goAvailable = false
+  }
+
+  const existingBinary = path.join(backendDir, outputName)
+  if (!goAvailable) {
+    if (fs.existsSync(existingBinary)) {
+      console.warn(
+        `⚠️  Go toolchain not found. Reusing existing backend binary: ${existingBinary}`
+      )
+      console.warn(
+        '   Install Go to rebuild the backend from source. Skipping backend compilation.'
+      )
+      return
+    }
+    console.warn(
+      '⚠️  Go toolchain not found and no existing backend binary present.'
+    )
+    console.warn(
+      '   Attempting the build anyway; it will fail if Go is truly missing.'
+    )
+  }
+
   // Build command
   const buildCmd = `cd backend && go build -ldflags="-s -w" -o "${outputPath}"`
 

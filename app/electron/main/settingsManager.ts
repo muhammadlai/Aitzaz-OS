@@ -67,6 +67,9 @@ export interface AppSettings {
   SUMMARIZATION_MODEL?: string
   SUMMARIZATION_SYSTEM_PROMPT?: string
   ttsProvider?: 'openai' | 'local'
+  voiceResponseEnabled?: boolean
+  ttsSpeed?: number
+  ttsVolume?: number
   ttsVoice?:
     | 'alloy'
     | 'ash'
