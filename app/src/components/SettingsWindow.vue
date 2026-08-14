@@ -1,5 +1,8 @@
 <template>
-  <div class="settings-window h-screen w-full bg-gray-900 text-white flex flex-col overflow-hidden">
+  <div
+    data-theme="dark"
+    class="settings-window h-screen w-full bg-gray-900 text-white flex flex-col overflow-hidden"
+  >
     <div class="title-bar flex items-center justify-between bg-gray-800 border-b border-gray-700 h-12 px-4 select-none"
          style="-webkit-app-region: drag;">
       <div class="flex items-center gap-3">

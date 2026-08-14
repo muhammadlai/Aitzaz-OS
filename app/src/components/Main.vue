@@ -1,5 +1,8 @@
 <template>
-  <div class="h-screen flex w-full items-center justify-start relative">
+  <div
+    data-theme="dark"
+    class="h-screen flex w-full items-center justify-start relative"
+  >
     <div
       class="avatar-wrapper flex container h-full items-center justify-center relative z-2"
       :class="{ mini: isMinimized }"
