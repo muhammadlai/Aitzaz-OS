@@ -83,17 +83,29 @@
 import { computed, ref, watch } from 'vue'
 import { maskSecret } from '../../utils/maskSecret'
 
-const props = defineProps<{
-  modelValue: string
-  /** The key that was already saved in secure storage (if any). */
-  savedValue?: string
-  placeholder?: string
-  busy?: boolean
-  testLabel?: string
-  /** Tri-state test status for the saved view. */
-  testPassed?: boolean | null
-  hasError?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    /** The key that was already saved in secure storage (if any). */
+    savedValue?: string
+    placeholder?: string
+    busy?: boolean
+    testLabel?: string
+    /** Tri-state test status for the saved view. */
+    testPassed?: boolean | null
+    hasError?: boolean
+  }>(),
+  {
+    savedValue: '',
+    placeholder: '',
+    busy: false,
+    testLabel: 'Test Connection',
+    // Explicit null default: Vue casts absent boolean-typed props to false,
+    // which would wrongly render "Check failed" for an untested saved key.
+    testPassed: null,
+    hasError: false,
+  }
+)
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
