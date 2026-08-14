@@ -290,14 +290,23 @@ export async function createChatCompletionForProvider(
   params: OpenAI.Chat.ChatCompletionCreateParams,
   signal?: AbortSignal
 ): Promise<any> {
+  // Without an explicit cap, some gateways (notably OpenRouter) reserve the
+  // model's full max output against account credits and reject low-credit
+  // accounts with HTTP 402. Summarization/analysis calls are short by design,
+  // so a modest default cap is safe for every provider.
+  const cappedParams: OpenAI.Chat.ChatCompletionCreateParams = {
+    max_tokens: 2048,
+    ...params,
+  }
+
   if (provider === 'minimax') {
     if (signal?.aborted) {
       throw new DOMException('The operation was aborted.', 'AbortError')
     }
-    return createMiniMaxChatCompletionViaMain(params, signal)
+    return createMiniMaxChatCompletionViaMain(cappedParams, signal)
   }
 
-  return getClient().chat.completions.create(params as any, { signal })
+  return getClient().chat.completions.create(cappedParams as any, { signal })
 }
 
 export async function createOpenAICompatibleResponse(

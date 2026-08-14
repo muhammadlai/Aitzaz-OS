@@ -60,11 +60,19 @@ describe('createOpenRouterResponse', () => {
       expect.objectContaining({
         model: 'anthropic/claude-sonnet-4.5',
         max_tool_calls: 1,
+        // Regression guard: without an explicit cap OpenRouter reserves the
+        // model's full max output (e.g. 65536) against credits and rejects
+        // low-credit accounts with HTTP 402.
+        max_tokens: expect.any(Number),
         tools: expect.arrayContaining([
           { type: 'openrouter:web_search' },
         ]),
       }),
       expect.any(Object)
     )
+
+    const sentParams = create.mock.calls[0][0]
+    expect(sentParams.max_tokens).toBeLessThanOrEqual(4096)
+    expect(sentParams.max_tokens).toBeGreaterThan(0)
   })
 })

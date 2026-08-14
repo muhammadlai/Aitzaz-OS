@@ -5,6 +5,16 @@ import { listModelsViaMainProcess } from './modelDiscovery'
 import { convertOpenRouterStreamToResponsesFormat } from './streamAdapters'
 import { buildToolsForProvider } from './tools'
 
+/**
+ * Cap the output tokens we ask OpenRouter for. When max_tokens is omitted,
+ * OpenRouter reserves the model's full max output (e.g. 65536) against the
+ * account's credits and rejects low/free-credit accounts with HTTP 402
+ * ("can only afford N tokens"). A voice assistant gives short spoken replies,
+ * so a modest cap avoids the over-reservation while leaving ample room for a
+ * full answer plus a tool call.
+ */
+const OPENROUTER_MAX_OUTPUT_TOKENS = 2048
+
 export async function listOpenRouterModelsForConfig(
   apiKey: string
 ): Promise<OpenAI.Models.Model[]> {
@@ -186,6 +196,7 @@ export const createOpenRouterResponse = async (
   } = {
     model: settings.assistantModel || 'gpt-4.1-mini',
     messages: messages,
+    max_tokens: OPENROUTER_MAX_OUTPUT_TOKENS,
     ...(!settings.assistantModel.startsWith('gpt-5')
       ? {
           temperature: settings.assistantTemperature,

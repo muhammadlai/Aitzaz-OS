@@ -7,6 +7,9 @@ if (typeof process !== 'undefined') {
 
 export default defineConfig({
   plugins: [vue()],
+  // Tests don't need Tailwind output; bypass the PostCSS plugin so SFC
+  // <style lang="postcss"> blocks mount cleanly in happy-dom tests.
+  css: { postcss: { plugins: [] } },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
