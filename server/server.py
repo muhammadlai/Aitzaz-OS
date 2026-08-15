@@ -682,6 +682,53 @@ _WARM_STARTED = False
 ALLOWED_ORIGIN_HOSTS = {"jarvis.local", "jarvis", "localhost", "127.0.0.1"}
 ALLOWED_ORIGIN_HOSTS |= set((CFG.get("security") or {}).get("extra_origin_hosts") or [])
 
+_LOCAL_IPS_CACHE: dict = {"ts": 0.0, "hosts": {"127.0.0.1", "::1", "localhost"}}
+
+
+def _local_ip_hosts() -> set[str]:
+    """This machine's own IPs (TTL-cached): the HUD is legit when opened by raw
+    LAN IP, and desktop-app users connect by IP more often than by mDNS name.
+    Without this, a browser Origin like https://192.168.1.20 was rejected and
+    the HUD sat at LINK DOWN forever (no voice in or out)."""
+    now = time.time()
+    if now - _LOCAL_IPS_CACHE["ts"] < 60:
+        return _LOCAL_IPS_CACHE["hosts"]
+    hosts = {"127.0.0.1", "::1", "localhost"}
+    try:
+        import socket
+        # 1) hostname resolution (covers the common Mac/Linux case)
+        for family in (socket.AF_INET, socket.AF_INET6):
+            try:
+                infos = socket.getaddrinfo(socket.gethostname(), None, family)
+            except OSError:
+                continue
+            for info in infos:
+                hosts.add(str(info[4][0]).split("%")[0].lower())
+        # 2) default-route source IP (UDP connect trick — no traffic is sent).
+        #    Catches setups where the hostname does NOT resolve to the LAN
+        #    interface (link-local IPs, some VPNs, containers).
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            probe.settimeout(1.0)
+            probe.connect(("8.8.8.8", 80))
+            hosts.add(str(probe.getsockname()[0]).split("%")[0].lower())
+            probe.close()
+        except OSError:
+            pass
+        # 3) enumerate every interface (covers Wi-Fi + Ethernet + VPN at once)
+        try:
+            import psutil
+            for addrs in psutil.net_if_addrs().values():
+                for a in addrs:
+                    if a.family in (socket.AF_INET, socket.AF_INET6):
+                        hosts.add(str(a.address).split("%")[0].lower())
+        except Exception:
+            pass
+    except Exception:
+        pass
+    _LOCAL_IPS_CACHE.update(ts=now, hosts=hosts)
+    return hosts
+
 
 def hud_token() -> str | None:
     env_name = (CFG.get("security") or {}).get("hud_token_env", "JARVIS_HUD_TOKEN")
@@ -704,14 +751,24 @@ async def api_auth_middleware(request: Request, call_next):
 
 
 def _ws_allowed(ws: WebSocket) -> bool:
-    """Browsers send Origin (+cookie); native clients (PTT, tests) send neither."""
+    """Browsers send Origin (+cookie); native clients (PTT, tests) send neither.
+
+    The HUD can be opened by any host the user typed — raw LAN IP, mDNS name,
+    custom domain — so we accept an origin when:
+      1. it's in the explicit allowlist, or
+      2. it's an IP of this machine (the server itself), or
+      3. it matches the Host header of THIS WebSocket request (same-origin;
+         a page served from a different host can never produce that).
+    """
     origin = ws.headers.get("origin")
     if not origin:
         return True  # non-browser client on the LAN (Python PTT, e2e tests)
     from urllib.parse import urlparse
     host = (urlparse(origin).hostname or "").lower()
-    if host not in ALLOWED_ORIGIN_HOSTS:
-        return False
+    if host not in ALLOWED_ORIGIN_HOSTS and host not in _local_ip_hosts():
+        req_host = (ws.headers.get("host") or "").split(":")[0].lower()
+        if not req_host or host != req_host:
+            return False
     token = hud_token()
     if not token:
         return True
@@ -1080,8 +1137,10 @@ async def _run_turn(ws: WebSocket, pipeline: VoicePipelineServer, conn: ConnStat
                 transcript_sent = transcript
             conn.spoken_sentences = []
             await pipeline.stream_response_audio(ws, transcript_sent, timing, conn)
-            timing.total_done_monotonic = time.perf_counter()
-            await ws.send_json({"type": "done", "turn_id": timing.turn_id, "timing": timing.summary()})
+        # always close the turn with a done event — including empty transcripts,
+        # otherwise clients (PTT, wake-word) that wait for it hang forever
+        timing.total_done_monotonic = time.perf_counter()
+        await ws.send_json({"type": "done", "turn_id": timing.turn_id, "timing": timing.summary()})
     except asyncio.CancelledError:
         timing.errors.append("turn cancelled (barge-in or stop)")
         raise
@@ -1176,6 +1235,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if conn.timing is None:
                         await ws.send_json({"type": "error", "message": "Received stop before start."})
                         continue
+                    if conn.turn_task is not None and not conn.turn_task.done():
+                        # duplicate stop while the turn is already processing —
+                        # ignore it instead of orphaning the running turn task
+                        continue
                     conn.recording = False
                     conn.timing.end_of_speech_monotonic = time.perf_counter()
                     conn.turn_task = asyncio.create_task(_run_turn(ws, pipeline, conn))
@@ -1205,6 +1268,12 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         if conn.turn_task and not conn.turn_task.done():
             conn.turn_task.cancel()
         print("Client disconnected", flush=True)
+    except RuntimeError:
+        # Starlette raises this (not WebSocketDisconnect) when the peer drops
+        # the TCP connection abruptly (app quit, network blip) — treat the same.
+        if conn.turn_task and not conn.turn_task.done():
+            conn.turn_task.cancel()
+        print("Client disconnected abruptly", flush=True)
     finally:
         WS_CLIENTS.discard(ws)
 

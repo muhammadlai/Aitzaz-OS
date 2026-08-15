@@ -106,6 +106,31 @@ fi
 
 # -------------------------------------------- 4. voice-IN path (mic/TLS/TCC)
 section "4. Mic path (voice IN) — TLS trust & macOS permission"
+
+# WebSocket origin probe: the #1 silent failure was the server rejecting the
+# HUD when opened by raw LAN IP (Origin check) -> permanent LINK DOWN.
+if listen 8765; then
+  LAN_IP=$(ipconfig getifaddr en0 2>/dev/null || echo 127.0.0.1)
+  if python3 - "$LAN_IP" <<'PY'
+import socket, sys, base64, os
+ip = sys.argv[1]
+key = base64.b64encode(os.urandom(16)).decode()
+req = ("GET /ws HTTP/1.1\r\nHost: %s:8765\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+       "Sec-WebSocket-Key: %s\r\nSec-WebSocket-Version: 13\r\nOrigin: https://%s\r\n\r\n") % (ip, key, ip)
+s = socket.create_connection(("127.0.0.1", 8765), timeout=3)
+s.sendall(req.encode())
+resp = s.recv(256).decode(errors="ignore")
+s.close()
+sys.exit(0 if " 101 " in resp.split("\r\n")[0] else 1)
+PY
+  then
+    ok "WS origin check OK (HUD opened from $LAN_IP is accepted)"
+  else
+    bad "WS origin check FAILED — server rejects the HUD opened by IP -> permanent LINK DOWN, no voice"
+    hint "update server.py (git pull), then: server/scripts/jarvis-restart.sh"
+  fi
+fi
+
 if [ -f certs/cert.pem ] && [ -f certs/key.pem ]; then
   ok "certs/cert.pem + key.pem exist"
   SAN=$(openssl x509 -in certs/cert.pem -noout -text 2>/dev/null | grep -A1 'Subject Alternative Name' | tail -1 | xargs)

@@ -17,6 +17,17 @@ without `NSMicrophoneUsageDescription`, so macOS denies its mic access with
 no prompt at all — rebuild the app from current sources, or open the HUD in
 Chrome/Safari instead.
 
+**HUD stuck at "LINK DOWN" / websocket instantly closes** — older servers
+rejected the HUD's WebSocket when it was opened by raw LAN IP (origin check
+only knew `jarvis.local`/`localhost`). Current code accepts the same host the
+page was loaded from plus the server's own IPs — update `server.py`. If you
+must keep an old server, add your IP to `security.extra_origin_hosts`.
+
+**HUD loops on "ACCESS DENIED" / 401 over plain http** — the PIN cookie used
+to be forced `secure`, which browsers silently refuse to store on plain http.
+Current HUD sets `secure` only on https. Use https (recommended) or update
+`hud/index.html`.
+
 **HUD loads but mic is blocked** — you're on plain http or an untrusted cert.
 Browsers require a secure context for `getUserMedia`. Trust `certs/cert.pem`
 on the device (see SETUP §3) and use `https://`.
