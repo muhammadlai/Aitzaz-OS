@@ -15,6 +15,24 @@ import { buildToolsForProvider } from './tools'
  */
 const OPENROUTER_MAX_OUTPUT_TOKENS = 2048
 
+/**
+ * Free OpenRouter models tried automatically when the selected model rejects
+ * the request (402 credits / 429 rate-limit / 404 unavailable), so free
+ * accounts keep working without manual model juggling.
+ */
+const OPENROUTER_FREE_FALLBACK_MODELS = [
+  'deepseek/deepseek-chat-v3-0324:free',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.0-flash-exp:free',
+  'mistralai/mistral-7b-instruct:free',
+]
+
+function isRetryableProviderError(error: any): boolean {
+  const status =
+    error?.status ?? error?.statusCode ?? error?.error?.code ?? error?.code
+  return status === 402 || status === 429 || status === 404
+}
+
 export async function listOpenRouterModelsForConfig(
   apiKey: string
 ): Promise<OpenAI.Models.Model[]> {
@@ -225,14 +243,50 @@ export const createOpenRouterResponse = async (
   }
 
   if (stream) {
-    const openrouterStream = await client.chat.completions.create(
+    const openrouterStream = await createWithFreeModelFallback(
+      client,
       params as any,
-      {
-        signal,
-      }
+      signal
     )
     return convertOpenRouterStreamToResponsesFormat(openrouterStream)
   }
 
-  return client.chat.completions.create(params as any, { signal })
+  return createWithFreeModelFallback(client, params as any, signal)
+}
+
+/**
+ * Creates a chat completion, and if the selected model is rejected for
+ * credit/rate-limit/availability reasons, transparently retries with known
+ * free models. Keeps free accounts functional with zero user intervention.
+ */
+async function createWithFreeModelFallback(
+  client: any,
+  params: any,
+  signal?: AbortSignal
+): Promise<any> {
+  try {
+    return await client.chat.completions.create(params, { signal })
+  } catch (error: any) {
+    if (signal?.aborted || !isRetryableProviderError(error)) {
+      throw error
+    }
+    console.warn(
+      `[OpenRouter] Model "${params.model}" rejected (${error?.status ?? error?.message}); trying free fallbacks...`
+    )
+    let lastError = error
+    for (const fallbackModel of OPENROUTER_FREE_FALLBACK_MODELS) {
+      if (fallbackModel === params.model) continue
+      try {
+        console.warn(`[OpenRouter] Trying fallback model: ${fallbackModel}`)
+        return await client.chat.completions.create(
+          { ...params, model: fallbackModel },
+          { signal }
+        )
+      } catch (fallbackError: any) {
+        lastError = fallbackError
+        if (signal?.aborted) throw fallbackError
+      }
+    }
+    throw lastError
+  }
 }

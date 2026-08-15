@@ -115,6 +115,22 @@ export async function createMainWindow(): Promise<BrowserWindow> {
 
   installNavigationGuards(win)
 
+  // Forward renderer console output to the main-process log so terminal
+  // users (and support sessions) can see chat/TTS errors without DevTools.
+  win.webContents.on('console-message', (event: any, ...rest: any[]) => {
+    try {
+      const message =
+        typeof rest[1] === 'string'
+          ? rest[1]
+          : typeof rest[0] === 'string'
+            ? rest[0]
+            : ''
+      if (message) console.log(`[Renderer] ${message}`)
+    } catch {
+      // Never let logging break the window.
+    }
+  })
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
