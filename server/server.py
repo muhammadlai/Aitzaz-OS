@@ -112,11 +112,16 @@ def load_env() -> None:
 
 def load_config() -> dict:
     if not CONFIG_PATH.exists():
-        raise SystemExit(
-            "Aitzaz voice server cannot start: config/server.yaml not found.\n"
-            f"Run:  cp {ROOT / 'config' / 'server.example.yaml'} {CONFIG_PATH}\n"
-            "then set your ElevenLabs voice_id (see docs/SETUP.md, step 3)."
-        )
+        example = ROOT / "config" / "server.example.yaml"
+        if not example.exists():
+            raise SystemExit(
+                "Aitzaz voice server cannot start: config/server.yaml not found "
+                "and config/server.example.yaml is missing too. Restore the repo files."
+            )
+        import shutil
+        shutil.copyfile(example, CONFIG_PATH)
+        print(f"First run: created {CONFIG_PATH} from the example template "
+              "(default voice works out of the box; see docs/SETUP.md).", flush=True)
     return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
@@ -1303,6 +1308,23 @@ def main() -> int:
     cert = server.get("tls_cert")
     key = server.get("tls_key")
     print(f"Starting Hermes voice server on ws://{host}:{port}/ws", flush=True)
+    # First run without certs: auto-generate a self-signed pair so the HUD
+    # gets https (browser mic requires it) with zero manual steps.
+    if (tls_ports and cert and key
+            and not ((ROOT / cert).exists() and (ROOT / key).exists())):
+        make_certs = ROOT / "scripts" / "make-certs.sh"
+        if make_certs.exists():
+            import subprocess
+            try:
+                r = subprocess.run(["bash", str(make_certs)], cwd=str(ROOT),
+                                   capture_output=True, text=True, timeout=60)
+                print((r.stdout or r.stderr or "certs generated").strip()[:400], flush=True)
+            except Exception as exc:
+                print(f"STARTUP WARNING: could not auto-generate TLS certs ({exc}); "
+                      "running ws-only. Run scripts/make-certs.sh manually.", flush=True)
+        else:
+            print("STARTUP WARNING: TLS certs missing and scripts/make-certs.sh "
+                  "not found; running ws-only.", flush=True)
     if tls_ports and cert and key and (ROOT / cert).exists() and (ROOT / key).exists():
         servers = [uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))]
         for tp in tls_ports:

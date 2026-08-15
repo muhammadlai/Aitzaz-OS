@@ -69,8 +69,10 @@ security:
 voice:
   provider: elevenlabs
   model: eleven_flash_v2_5
-  voice_name: "Your chosen voice"
-  voice_id: YOUR_ELEVENLABS_VOICE_ID
+  voice_name: "Adam"
+  # Default: ElevenLabs' premade "Adam" voice — works out of the box with any
+  # API key. Swap in any voice_id from your ElevenLabs Voice Library anytime.
+  voice_id: pNInz6obpgDQGcFmaJgB
   output_format: pcm_16000
 
 persona:                     # used only by the anthropic fallback path

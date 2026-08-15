@@ -36,8 +36,8 @@ if [ -f config/server.yaml ]; then
     && ok "TLS ports configured (required for mic)" \
     || warn "no tls_ports in server config (browser mic needs https)"
 else
-  bad "config/server.yaml MISSING — server.py exits immediately without it"
-  hint "cp config/server.example.yaml config/server.yaml  (then set voice.voice_id)"
+  bad "config/server.yaml MISSING"
+  hint "scripts/jarvis-setup.sh   (one-command installer — does this and everything else)"
 fi
 
 # ------------------------------------------------------------ 2. env/secrets
@@ -202,8 +202,9 @@ EOF
 else
   cat <<'EOF'
   Fix the FAIL lines top to bottom, then re-run this script:
-    1. server/scripts/jarvis-start.sh           (bring services up)
-    2. tail -f ~/Library/Logs/jarvis-voice.log  (watch it boot)
-    3. server/scripts/jarvis-doctor.sh          (re-check)
+    1. scripts/jarvis-setup.sh   (one-command installer — fixes almost everything)
+    2. server/scripts/jarvis-start.sh           (bring services up)
+    3. tail -f ~/Library/Logs/jarvis-voice.log  (watch it boot)
+    4. server/scripts/jarvis-doctor.sh          (re-check)
 EOF
 fi

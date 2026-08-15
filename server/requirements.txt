@@ -1,0 +1,15 @@
+# Aitzaz voice pipeline server (server/server.py)
+# Install with:  .venv/bin/pip install -r requirements.txt
+# faster-whisper and silero-vad are REQUIRED — recent RealtimeSTT releases
+# treat them as optional extras and fail at runtime without them.
+fastapi>=0.110
+uvicorn>=0.29
+requests>=2.31
+pyyaml>=6.0
+numpy>=1.24
+anthropic>=0.34
+RealtimeSTT>=0.1.16
+faster-whisper>=1.0
+silero-vad>=5.1
+websockets>=12.0
+psutil>=5.9

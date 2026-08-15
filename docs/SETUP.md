@@ -41,11 +41,23 @@ For the HUD's quota bar, give the key the **User → Read** permission.
 
 ## 3. The voice pipeline server (this repo)
 
+**Easiest path (macOS):** one command does the whole section below — venv,
+dependencies, config, certs, secrets, launchd auto-start, health check:
+
+```bash
+cd server && scripts/jarvis-setup.sh
+```
+
+It is idempotent: re-run it any time to add a key or fix things.
+`--elevenlabs-key KEY` and `--voice-id ID` skip the prompts. The config's
+default voice (ElevenLabs premade "Adam") works out of the box.
+
+**Manual path:**
+
 ```bash
 cd server
 python3 -m venv .venv
-.venv/bin/pip install fastapi uvicorn requests pyyaml numpy anthropic \
-    RealtimeSTT faster-whisper silero-vad websockets psutil
+.venv/bin/pip install -r requirements.txt
 cp config/server.example.yaml config/server.yaml
 ```
 
@@ -54,9 +66,10 @@ releases treat them as optional extras and fail at runtime without them
 (silently for VAD, loudly for the engine). The first start takes 60–90 s
 (torch import + model download); subsequent starts are faster.
 
-Edit `config/server.yaml`: set `voice.voice_id`, and adjust the `machines:`
-list (or delete it). The first run downloads the Whisper model (~460 MB for
-`small.en`).
+Edit `config/server.yaml` only if you want a different voice (default: Adam)
+or a custom `machines:` list (the example lists a placeholder GPU worker —
+delete the entry if you don't have one). The first run downloads the Whisper
+model (~460 MB for `small.en`).
 
 ### TLS certificates (required for browser microphone)
 

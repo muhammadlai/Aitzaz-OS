@@ -101,7 +101,24 @@ restart.
 
 ## Install
 
-Full walkthrough in [docs/SETUP.md](docs/SETUP.md). Short version:
+**macOS — one command does everything** (venv, config, certs, secrets,
+launchd auto-start, health check):
+
+```bash
+git clone https://github.com/muhammadlai/Aitzaz-OS.git
+cd Aitzaz-OS/server
+scripts/jarvis-setup.sh                       # answers/creates everything
+scripts/jarvis-setup.sh --elevenlabs-key KEY  # add your ElevenLabs key later
+```
+
+Then open `https://YOUR_HOST/hud/` and talk. The default voice (ElevenLabs
+premade "Adam") works out of the box; change `voice.voice_id` in
+`config/server.yaml` to use any voice from your Voice Library. The server
+also self-heals on first run: if `config/server.yaml` or the TLS certs are
+missing, it creates them automatically.
+
+Full walkthrough in [docs/SETUP.md](docs/SETUP.md). Manual install, short
+version:
 
 ```bash
 # 1. Enable the Hermes Agent API server
@@ -114,19 +131,29 @@ EOF
 hermes gateway   # or set up its LaunchAgent / service
 
 # 2. This repo
-git clone https://github.com/muhammadlai/Aitzaz-OS.git
 cd Aitzaz-OS/server
 python3 -m venv .venv
-.venv/bin/pip install fastapi uvicorn requests pyyaml numpy anthropic \
-    RealtimeSTT faster-whisper silero-vad websockets psutil
-cp config/server.example.yaml config/server.yaml   # edit: your ElevenLabs voice_id etc.
+.venv/bin/pip install -r requirements.txt
+cp config/server.example.yaml config/server.yaml   # default voice works already
 scripts/make-certs.sh                              # self-signed TLS (browser mic needs it)
-scripts/make-boot-audio.sh YourName                # one-time boot greeting synthesis
 
 # 3. Run
 .venv/bin/python server.py
 # open https://YOUR_HOST/hud/ → accept cert → enter your JARVIS_HUD_TOKEN → talk
 ```
+
+**Urdu / Roman Urdu — ek nazar mein:**
+
+- **Awaaz nahi aa rahi?** Mac par chalao: `cd server && scripts/jarvis-doctor.sh`
+  — jo line FAIL dikhe usko theek karo, phir dobara chalao.
+- **Sab kuch khud set karna hai?** `scripts/jarvis-setup.sh` — venv, config,
+  certs, keys aur launchd sab khud bana deta hai.
+- **Voice (TTS) band?** `ELEVENLABS_API_KEY` `~/.hermes/.env` mein hona
+  chahiye (elevenlabs.io → Profile → API Keys). Default awaaz "Adam" pehle se
+  set hai — `server.yaml` mein `voice_id` badal kar koi bhi awaaz chun lo.
+- **Mic band?** Browser/desktop app ko microphone permission do (System
+  Settings → Privacy & Security → Microphone), aur cert trusted hona chahiye
+  (setup script khud trust kar deta hai).
 
 For auto-start on boot, see [launchd/](launchd/) (macOS) — the plists document
 two non-obvious macOS traps (external-drive TCC and log paths) that cost us an
