@@ -1,6 +1,20 @@
 # Aitzaz AI Pro — Voice + HUD for Hermes Agent
 
-A self-hosted, futuristic AI voice assistant and command center built on top of
+## ⚡ Zero-setup voice app (koi server, koi key, koi terminal NAHI)
+
+Bus **`aitzaz-voice.html`** kholo browser mein (Chrome/Edge/Safari) → mic allow
+karo → bolo. Bolta hai, sunta hai, AI jawab deta hai — sab free, kisi bhi
+computer se:
+
+- **Voice IN:** browser ka built-in SpeechRecognition (free)
+- **Brain:** Pollinations.ai free LLM (koi API key nahi) + offline basic brain
+  (time, date, joke, weather, dictionary, Wikipedia, math)
+- **Voice OUT:** browser ki awaaz (English) ya Google Translate TTS (Urdu/Hindi)
+
+Download: [aitzaz-voice.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/arena%2F01a00574-aitzaz-os/aitzaz-voice.html)
+(right-click → Save As → double-click). Ya repo se `git pull` ke baad wahi file.
+
+Self-hosted, futuristic AI voice assistant and command center built on top of
 [Hermes Agent](https://github.com/NousResearch/hermes-agent) (NousResearch's
 open-source autonomous agent). Talk to a *real* agent — one with persistent
 memory, terminal access, web search, file tools, and 80+ skills — through a

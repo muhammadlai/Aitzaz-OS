@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AITZAZ VOICE — Zero Setup Voice Assistant</title>
+<meta name="description" content="Aitzaz Voice — free voice assistant. No server, no API keys, no install. Open in Chrome, allow mic, talk.">
+<style>
+:root{
+  --bg:#050b14; --panel:#081523cc; --line:#0e2c40;
+  --cyan:#00e5ff; --cyan-dim:#0a7f96; --teal:#19f0d8;
+  --amber:#ffb300; --red:#ff4d5e; --txt:#9fd8e8; --txt-dim:#4d7d92;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:radial-gradient(ellipse at 50% 30%, #0a1a2c 0%, var(--bg) 65%);
+  color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans",sans-serif;
+  display:flex; flex-direction:column; min-height:100vh;
+}
+header{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  border-bottom:1px solid var(--line); background:var(--panel); padding:12px 18px;
+  flex-wrap:wrap;
+}
+header h1{font-size:18px; letter-spacing:6px; color:var(--cyan); text-shadow:0 0 12px #00e5ff88; white-space:nowrap}
+header .sub{font-size:12px; letter-spacing:2px; color:var(--txt-dim)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:var(--txt-dim)}
+.dot.on{background:var(--teal); box-shadow:0 0 6px var(--teal)}
+.dot.off{background:var(--red); box-shadow:0 0 6px var(--red)}
+.dot.amber{background:var(--amber); box-shadow:0 0 6px var(--amber)}
+main{flex:1; display:flex; flex-direction:column; align-items:center; padding:22px 14px 8px; gap:16px; max-width:760px; width:100%; margin:0 auto}
+/* ---- banner ---- */
+#banner{display:none; width:100%; max-width:720px; border:1px solid var(--red); background:#240a0e; color:#ffb3b9;
+  padding:12px 14px; font-size:14px; line-height:1.5}
+/* ---- mic ---- */
+#micWrap{position:relative; width:150px; height:150px; cursor:pointer}
+#micBtn{
+  width:100%; height:100%; border-radius:50%; border:2px solid var(--cyan-dim);
+  background:radial-gradient(circle at 50% 38%, #0c2436 0%, #06101c 70%);
+  color:var(--cyan); font-size:44px; cursor:pointer; outline:none;
+  box-shadow:0 0 26px #00e5ff33, inset 0 0 30px #00e5ff11;
+  transition:transform .15s ease;
+}
+#micBtn:hover{transform:scale(1.04)}
+#micBtn:active{transform:scale(.96)}
+body.listening #micBtn{border-color:var(--teal); box-shadow:0 0 46px #19f0d866, inset 0 0 34px #19f0d822; color:var(--teal)}
+body.speaking #micBtn{border-color:var(--amber); box-shadow:0 0 46px #ffb30055, inset 0 0 34px #ffb30022; color:var(--amber)}
+body.thinking #micBtn{border-color:var(--amber); color:var(--amber); animation:think 1s ease-in-out infinite}
+@keyframes think{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+#ring1{position:absolute; inset:-10px; border-radius:50%; border:1px solid var(--cyan-dim); opacity:0; pointer-events:none}
+body.listening #ring1{opacity:.55; animation:pulse 1.6s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.94);opacity:.55}100%{transform:scale(1.18);opacity:0}}
+#coreState{text-align:center}
+#coreState .st{font-size:15px; letter-spacing:6px; color:var(--cyan); text-shadow:0 0 14px #00e5ffaa}
+#coreState .hint{font-size:11px; letter-spacing:2px; color:var(--txt-dim); margin-top:6px}
+/* ---- feed ---- */
+#feed{
+  width:100%; flex:1; min-height:180px; max-height:42vh; overflow-y:auto; display:flex;
+  flex-direction:column; gap:6px; padding:4px 6px; scrollbar-width:thin;
+}
+.msg{font-size:15px; line-height:1.45; padding:8px 12px; border:1px solid var(--line); background:#08152399; max-width:88%; border-radius:8px}
+.msg.you{align-self:flex-end; border-color:#205a6e; color:#cfeefb}
+.msg.aitzaz{align-self:flex-start; border-left:2px solid var(--cyan)}
+.msg.sys{align-self:center; color:var(--txt-dim); font-size:12.5px; border:none; background:none; padding:2px}
+.msg.live{opacity:.6; font-style:italic}
+/* ---- controls ---- */
+#controls{width:100%; display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center}
+select, input[type=text], button.ctl{
+  background:#06101c; border:1px solid var(--line); color:#cfeefb; padding:8px 10px;
+  font-size:13.5px; border-radius:6px; outline:none; font-family:inherit;
+}
+select:focus, input[type=text]:focus{border-color:var(--cyan-dim); box-shadow:0 0 8px #00e5ff33}
+button.ctl{background:#0a2435; color:var(--cyan); border-color:var(--cyan-dim); cursor:pointer; letter-spacing:1px}
+button.ctl:hover{background:#0e3349}
+#chatRow{width:100%; display:flex; gap:8px}
+#chatInput{flex:1}
+footer{border-top:1px solid var(--line); padding:8px 16px; font-size:11.5px; color:var(--txt-dim);
+  display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; letter-spacing:1px}
+footer b{color:var(--cyan-dim)}
+@media (max-width:560px){
+  header h1{font-size:15px; letter-spacing:3px}
+  #micWrap{width:120px; height:120px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>AITZAZ VOICE</h1>
+  <div class="sub">
+    <span><span class="dot off" id="brainDot"></span><span id="brainState">AI: —</span></span>
+    &nbsp;&nbsp;
+    <span><span class="dot off" id="micDot"></span><span id="micState">MIC: IDLE</span></span>
+  </div>
+</header>
+
+<div id="banner"></div>
+
+<main>
+  <div id="micWrap" title="Tap to talk">
+    <div id="ring1"></div>
+    <button id="micBtn">🎤</button>
+  </div>
+  <div id="coreState">
+    <div class="st" id="stateLabel">STANDBY</div>
+    <div class="hint" id="stateHint">TAP THE MIC AND SPEAK — بول کر بتائیں</div>
+  </div>
+
+  <div id="feed"></div>
+
+  <div id="chatRow">
+    <input id="chatInput" type="text" placeholder="Type here bhi likh sakte ho…" autocomplete="off">
+    <button class="ctl" id="sendBtn">SEND</button>
+    <button class="ctl" id="clearBtn">CLR</button>
+  </div>
+
+  <div id="controls">
+    <select id="langSel" title="Language / Zaban">
+      <option value="ur-PK" selected>🗣️ اردو (Urdu)</option>
+      <option value="en-US">🗣️ English</option>
+      <option value="hi-IN">🗣️ हिन्दी (Hindi)</option>
+    </select>
+    <select id="modeSel" title="Brain mode">
+      <option value="smart" selected>🧠 SMART AI (online, free)</option>
+      <option value="basic">⚡ BASIC (offline: time/joke/weather)</option>
+    </select>
+    <select id="voiceSel" title="English awaaz chuno"></select>
+  </div>
+</main>
+
+<footer>
+  <span>🔊 Bolne ke baad jawab <b>awaaz mein</b> aayega</span>
+  <span>No server · No API key · 100% free</span>
+</footer>
+
+<script>
+"use strict";
+/* ============================================================
+   AITZAZ VOICE — zero-setup voice assistant (single file)
+   - Voice IN : browser SpeechRecognition (free, Google/Apple)
+   - Brain    : Pollinations.ai free LLM (no key) + built-in offline brain
+   - Voice OUT: speechSynthesis (English) / Google Translate TTS (Urdu/Hindi)
+   ============================================================ */
+
+const $=id=>document.getElementById(id);
+const feed=$("feed");
+
+let listening=false, processing=false, speaking=false;
+let pendingFinal="", finalTimer=null, rec=null;
+let settings={lang:"ur-PK", mode:"smart", voiceURI:""};
+try{ settings=Object.assign(settings, JSON.parse(localStorage.getItem("aitzaz_voice")||"{}")); }catch(e){}
+function save(){ try{ localStorage.setItem("aitzaz_voice", JSON.stringify(settings)); }catch(e){} }
+
+/* -------------------------------------------------- recognition setup */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if(!SR){
+  showBanner("⚠️ Is browser mein voice nahi chalegi. Chrome / Edge / Safari kholo aur ye page wahan load karo.");
+  $("micBtn").disabled=true;
+} else {
+  rec=new SR();
+  rec.continuous=true;
+  rec.interimResults=true;
+  rec.lang=settings.lang;
+  rec.onresult=e=>{
+    let interim="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal) pendingFinal += r[0].transcript+" ";
+      else interim += r[0].transcript;
+    }
+    if(interim) showLive(interim);
+    if(pendingFinal.trim() && !processing){
+      clearTimeout(finalTimer);
+      finalTimer=setTimeout(()=>{
+        const t=pendingFinal.trim(); pendingFinal="";
+        if(t) process(t);
+      }, 1000);
+    }
+  };
+  rec.onerror=e=>{
+    if(e.error==="not-allowed"){
+      setMic("BLOCKED"); setState("error","MIC BLOCKED","Allow mic: browser address bar → site settings → Microphone → Allow. Phir mic dabao.");
+      showBanner("🔴 Mic permission denied hai! Browser ke address bar mein 🎙️ icon par click karo → 'Allow' karo, phir mic button dobara dabao.");
+      listening=false;
+    } else if(e.error==="no-speech"){
+      /* silence — continuous mode keeps going */
+    } else if(e.error==="network"){
+      setState("error","NETWORK","Internet check karo — voice recognition ko net chahiye (free Google service).");
+    } else if(e.error==="language-not-supported"){
+      rec.lang="en-US";
+      setState("listening","LISTENING (EN)","Ye browser Urdu nahi sunta — English bolo ya Chrome update karo.");
+    } else if(e.error!=="aborted"){
+      showBanner("Voice error: "+e.error);
+    }
+  };
+  rec.onend=()=>{
+    if(listening && !processing && !speaking){
+      setTimeout(()=>{ if(listening && !processing && !speaking){ try{rec.start()}catch(_){} } }, 350);
+    }
+  };
+}
+
+/* -------------------------------------------------- state helpers */
+function setState(st,label,hint){
+  document.body.classList.remove("listening","speaking","thinking");
+  if(st==="listening")document.body.classList.add("listening");
+  if(st==="speaking")document.body.classList.add("speaking");
+  if(st==="thinking")document.body.classList.add("thinking");
+  $("stateLabel").textContent=label;
+  if(hint!==undefined)$("stateHint").textContent=hint;
+}
+function setMic(s){
+  const on=s==="READY"||s==="LIVE";
+  $("micDot").className="dot "+(on?"on":"off");
+  $("micState").textContent="MIC: "+s;
+}
+function setBrain(s){
+  $("brainDot").className="dot "+(s==="online"?"on":s==="basic"?"amber":"off");
+  $("brainState").textContent="AI: "+(s==="online"?"ONLINE":s==="basic"?"BASIC":"—");
+}
+function showBanner(html){ const b=$("banner"); b.innerHTML=html; b.style.display="block"; }
+function hideBanner(){ $("banner").style.display="none"; }
+
+let liveEl=null;
+function showLive(text){
+  if(!text)return;
+  if(!liveEl){liveEl=addMsg("you live","")}
+  liveEl.textContent=text; feed.scrollTop=feed.scrollHeight;
+}
+function clearLive(){ if(liveEl){liveEl.remove(); liveEl=null;} }
+function addMsg(cls,text){
+  const d=document.createElement("div"); d.className="msg "+cls; d.textContent=text;
+  feed.appendChild(d); feed.scrollTop=feed.scrollHeight;
+  while(feed.children.length>60)feed.removeChild(feed.firstChild);
+  return d;
+}
+
+/* -------------------------------------------------- audio beeps */
+let actx=null;
+function ensureCtx(){
+  try{
+    if(!actx) actx=new (window.AudioContext||window.webkitAudioContext)();
+    if(actx.state==="suspended") actx.resume();
+  }catch(e){}
+}
+function beep(up){
+  try{
+    ensureCtx(); if(!actx||actx.state!=="running")return;
+    const o=actx.createOscillator(), g=actx.createGain(), t=actx.currentTime;
+    o.type="sine"; o.frequency.setValueAtTime(up?880:440,t);
+    g.gain.setValueAtTime(.12,t); g.gain.exponentialRampToValueAtTime(.0001,t+.25);
+    o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+.26);
+  }catch(e){}
+}
+
+/* -------------------------------------------------- mic control */
+function startRec(){
+  if(!SR||!rec)return;
+  listening=true;
+  try{ rec.lang=settings.lang; rec.start(); }catch(e){ /* already started */ }
+  setMic("LIVE"); setState("listening","LISTENING","BOLO — MAIN SUN RAHA HOON…");
+  hideBanner(); beep(true);
+}
+function stopRec(){
+  listening=false;
+  try{ rec.stop(); }catch(e){}
+  setMic("READY"); beep(false);
+}
+function toggleMic(){
+  ensureCtx();
+  if(speaking){ stopSpeak(); }                 // barge-in: tap while talking
+  if(listening){ stopRec(); setState("standby","STANDBY","TAP THE MIC AND SPEAK"); }
+  else if(!processing){ startRec(); }
+}
+$("micBtn").onclick=toggleMic;
+
+/* -------------------------------------------------- brain */
+const SYSTEM_PROMPT="You are Aitzaz, a friendly personal voice assistant. Reply in the SAME language the user writes: if the user writes Urdu or Roman Urdu, reply in Roman Urdu; if Hindi, reply in Hindi; else English. Keep replies SHORT — 1 to 3 spoken sentences, plain conversational text, no markdown, no lists, no emojis. Your reply will be read aloud.";
+
+async function brain(text){
+  if(settings.mode==="basic"){ setBrain("basic"); return await localBrain(text); }
+  for(const model of ["openai","mistral"]){
+    try{
+      const ctrl=new AbortController();
+      const tm=setTimeout(()=>ctrl.abort(), 25000);
+      const r=await fetch("https://text.pollinations.ai/",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({messages:[{role:"system",content:SYSTEM_PROMPT},{role:"user",content:text}], model}),
+        referrer:"https://text.pollinations.ai/",
+        signal:ctrl.signal
+      });
+      clearTimeout(tm);
+      if(!r.ok) continue;
+      const j=await r.json();
+      let out=(j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)
+              ||(typeof j==="string"?j:null);
+      if(out&&out.trim()){
+        setBrain("online");
+        return out.trim().replace(/\s+/g," ").replace(/^["']+|["']+$/g,"");
+      }
+    }catch(e){ /* next model / fallback */ }
+  }
+  setBrain("basic");
+  return await localBrain(text);
+}
+
+/* -------------------------------------------------- offline brain */
+const JOKES=[
+ "Mujhe mere Wi-Fi signals se zyada IQ wala dost kabhi nahi mila.",
+ "Doctor ne kaha parhej karo... main ne kaha parhej kaun hai?",
+ "Why do programmers prefer dark mode? Because light attracts bugs!",
+ "I told my wife she was drawing her eyebrows too high. She looked surprised.",
+ "Zindagi mein do cheezein kabhi free nahi milti: Wi-Fi aur sach.",
+ "Ek bar ek computer ne insaan se kaha: tumhara software update pending hai... insaan ghabra gaya."
+];
+const WEATHER_CODES={0:"saaf mausam",1:"halkay baadal",2:"aadhe baadal",3:"baadal chhaye",
+ 45:"dhund",48:"dhund",51:"boondain",53:"boondain",55:"halki barish",61:"barish",63:"barish",
+ 65:"tez barish",66:"barish",67:"barish",71:"barf",73:"barf",75:"barf",77:"barf",
+ 80:"barish ki boondain",81:"barish",82:"tez barish",95:"garaj",96:"garaj ke saath barish",99:"garaj ke saath tez barish"};
+
+function isUrdu(t){return /[\u0600-\u06FF]/.test(t)}
+function isHindi(t){return /[\u0900-\u097F]/.test(t)}
+
+async function localBrain(text){
+  const t=text.trim();
+  const u=isUrdu(t);
+  // math: /^[0-9+\-*/().^% ]+$/ with digits + operator
+  const m=t.replace(/\s+/g,"");
+  if(/^[\d+\-*/().^%]+$/.test(m) && /\d/.test(m) && /[+\-*/^%]/.test(m)){
+    try{
+      const v=Function("return ("+m.replace(/\^/g,"**")+")")();
+      return isNaN(v)?"Ye hisaab samajh nahi aya.":(u?"نتیجہ: "+v:"Result: "+v);
+    }catch(e){ return "Ye hisaab samajh nahi aya."; }
+  }
+  if(/^(hi|hello|hey|salam|assalam|aoa|السلام علیکم)\b/i.test(t))
+    return u?"وعلیکم السلام! میں اعتزاز ہوں، آپ کا وائس اسسٹنٹ۔ بتائیں کیا مدد کروں؟"
+            :"Walaikum assalam! Main Aitzaz hoon — bataiye kya madad karun?";
+  if(/(who are you|tum kaun|aap kaun|تم کون|آپ کون)/i.test(t))
+    return u?"میں اعتزاز ہوں — آپ کا وائس اسسٹنٹ۔ میں سنتا ہوں اور بولتا ہوں، بالکل مفت۔"
+            :"Main Aitzaz hoon — aap ka voice assistant. Main sunta hoon aur bolta hoon, bilkul free.";
+  if(/(thanks|thank you|shukriya|شکریہ|جزاک اللہ)/i.test(t))
+    return u?"کوئی مسئلہ نہیں! خوش رہیں۔":"Koi masla nahi! Khush rahiye.";
+  if(/\b(time|waqt|وقت|baje|بجے)\b/i.test(t)){
+    const d=new Date();
+    let h=d.getHours(), mm=String(d.getMinutes()).padStart(2,"0"), am=h<12?"AM":"PM";
+    h=h%12||12;
+    return u?("ابھی وقت ہے "+h+":"+mm+" "+(am==="AM"?"صبح":"شام")):("Abhi time hai "+h+":"+mm+" "+am);
+  }
+  if(/\b(date|day|tarikh|تاریخ|aaj|آج)\b/i.test(t)){
+    const d=new Date();
+    const s=d.toLocaleDateString(u?"ur-PK":"en-GB",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    return u?("آج "+s+" ہے"):("Aaj "+s+" hai");
+  }
+  if(/joke|hansi|mazaq|مذاق|لطیفہ/i.test(t))
+    return JOKES[Math.floor(Math.random()*JOKES.length)];
+  let w;
+  if(w=t.match(/(?:define|meaning of|definition of|matlab|مطلب)\s+(.+)/i)){
+    try{
+      const r=await fetch("https://api.dictionaryapi.dev/api/v2/entries/en/"+encodeURIComponent(w[1].trim().split(/\s+/)[0]));
+      if(!r.ok) throw 0;
+      const j=await r.json();
+      const d=j[0].meanings[0].definitions[0].definition;
+      return w[1].trim().split(/\s+/)[0]+" ka matlab: "+d;
+    }catch(e){ return "Lafz nahi mila: "+w[1].trim(); }
+  }
+  if(w=t.match(/(?:weather|mausam|موسم)\s+(?:in\s+|of\s+)?(.+)/i)){
+    return await weather(w[1].trim());
+  }
+  if(w=t.match(/(?:who is|what is|kon hai|kaun hai|کون ہے|کیا ہے)\s+(.+)/i)){
+    return await wiki(w[1].trim());
+  }
+  return (u?"میں ابھی BASIC موڈ میں ہوں (offline)۔ SMART AI کے لیے اوپر SMART chuno aur internet on rakho. Waise aap pooch sakte ho: time, date, joke, weather in Karachi, define voice, who is Quaid-e-Azam."
+          :"Main abhi BASIC mode mein hoon (offline). SMART AI ke liye upar SMART chuno aur internet on rakho. Waise aap pooch sakte ho: time, date, joke, weather in Karachi, define voice, who is Quaid-e-Azam.");
+}
+
+async function weather(city){
+  try{
+    const g=await (await fetch("https://geocoding-api.open-meteo.com/v1/search?name="+encodeURIComponent(city)+"&count=1")).json();
+    if(!g.results||!g.results.length) return "City nahi mili: "+city;
+    const {latitude,longitude,name}=g.results[0];
+    const w=await (await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,wind_speed_10m`)).json();
+    const c=w.current;
+    return name+" mein abhi "+c.temperature_2m+"°C, "+(WEATHER_CODES[c.weather_code]||"mausam")+", hawa "+c.wind_speed_10m+" km/h.";
+  }catch(e){ return "Weather nahi mili (internet check karo)."; }
+}
+
+async function wiki(title){
+  try{
+    const r=await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/"+encodeURIComponent(title));
+    if(!r.ok) return title+" ke baare mein kuch nahi mila.";
+    const j=await r.json();
+    const x=(j.extract||"").split(/(?<=\.)\s+/).slice(0,2).join(" ");
+    return (j.title||title)+": "+(x||"(no summary)");
+  }catch(e){ return "Wikipedia se jawab nahi mila (internet check karo)."; }
+}
+
+/* -------------------------------------------------- turn flow */
+async function process(text){
+  if(!text)return;
+  if(processing){ pendingFinal+=text+" "; return; }
+  processing=true; clearLive(); addMsg("you",text);
+  try{ rec&&rec.stop(); }catch(e){}
+  setState("thinking","THINKING","AI SOCH RAHA HAI…");
+  let reply;
+  try{ reply=await brain(text); }
+  catch(e){ reply=await localBrain(text); }
+  addMsg("aitzaz",reply);
+  processing=false;
+  speak(reply);
+}
+
+/* -------------------------------------------------- TTS */
+function speak(text){
+  stopSpeak();
+  if(!text) { speechDone(); return; }
+  speaking=true; setState("speaking","SPEAKING","JAWAB BOLE JA RAHA HAI…");
+  if(isUrdu(text)) return googleSpeak(text,"ur");
+  if(isHindi(text)) return googleSpeak(text,"hi");
+  return localSpeak(text);
+}
+
+function localSpeak(text){
+  const synth=window.speechSynthesis;
+  if(!synth){ googleSpeak(text,"en"); return; }
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  const vs=synth.getVoices()||[];
+  let v=vs.find(x=>x.voiceURI===settings.voiceURI)
+       ||vs.find(x=>/^en/i.test(x.lang)&&x.localService)
+       ||vs.find(x=>/^en/i.test(x.lang))||vs[0];
+  if(v)u.voice=v;
+  u.rate=1.04; u.pitch=1;
+  u.onend=()=>speechDone();
+  u.onerror=()=>speechDone();
+  synth.speak(u);
+}
+
+function splitChunks(text,max){
+  const parts=text.split(/(?<=[.!?؟۔])\s+/);
+  const out=[]; let cur="";
+  for(const p of parts){
+    if((cur+" "+p).trim().length<=max) cur=(cur+" "+p).trim();
+    else { if(cur)out.push(cur); cur=p; }
+  }
+  if(cur)out.push(cur);
+  return out.length?out:[text.slice(0,max)];
+}
+
+function googleSpeak(text,tl){
+  const chunks=splitChunks(text,180);
+  let i=0;
+  const next=()=>{
+    if(!speaking||i>=chunks.length){ speechDone(); return; }
+    const a=new Audio("https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl="+tl+"&q="+encodeURIComponent(chunks[i++]));
+    a.onended=()=>next();
+    a.onerror=()=>{ a.onerror=null; next(); };
+    a.play().catch(()=>{
+      // autoplay blocked -> fall back to the browser's own voice once
+      a.onended=null; a.onerror=null;
+      if(tl!=="en"||i!==1) localSpeak(chunks[i-1]);
+      else localSpeak(text);
+    });
+  };
+  next();
+}
+
+function stopSpeak(){
+  try{ window.speechSynthesis&&window.speechSynthesis.cancel(); }catch(e){}
+  speaking=false;
+}
+function speechDone(){
+  speaking=false;
+  if(listening && !processing){ setState("listening","LISTENING","BOLO — MAIN SUN RAHA HOON…"); setTimeout(()=>{ if(listening&&!processing&&!speaking){ try{rec.start()}catch(_){} } },350); }
+  else if(!processing){ setState("standby","STANDBY","TAP THE MIC AND SPEAK — بول کر بتائیں"); }
+}
+
+/* -------------------------------------------------- typed chat */
+function sendChat(){
+  const inp=$("chatInput"); const t=inp.value.trim(); if(!t||processing)return;
+  inp.value=""; process(t);
+}
+$("sendBtn").onclick=sendChat;
+$("chatInput").addEventListener("keydown",e=>{ if(e.key==="Enter")sendChat(); });
+$("clearBtn").onclick=()=>{ feed.innerHTML=""; addMsg("sys","Chat cleared"); };
+
+/* -------------------------------------------------- settings */
+$("langSel").value=settings.lang;
+$("modeSel").value=settings.mode;
+$("langSel").onchange=()=>{ settings.lang=$("langSel").value; save(); if(rec)rec.lang=settings.lang; };
+$("modeSel").onchange=()=>{ settings.mode=$("modeSel").value; save(); setBrain(settings.mode==="smart"?"—":"basic"); };
+
+function initVoices(){
+  const synth=window.speechSynthesis; if(!synth)return;
+  const vs=synth.getVoices()||[];
+  if(!vs.length)return;
+  const sel=$("voiceSel");
+  sel.innerHTML="";
+  vs.forEach(v=>{
+    const o=document.createElement("option");
+    o.value=v.voiceURI; o.textContent=(/^en/i.test(v.lang)?"EN":"—")+" "+v.name+(v.localService?"":" (net)");
+    sel.appendChild(o);
+  });
+  sel.value=settings.voiceURI||"";
+  sel.style.display="inline-block";
+  sel.onchange=()=>{ settings.voiceURI=sel.value; save(); };
+}
+if("speechSynthesis" in window){
+  window.speechSynthesis.onvoiceschanged=initVoices;
+  initVoices();
+}
+
+/* -------------------------------------------------- boot */
+$("stateLabel").textContent="STANDBY";
+setMic("IDLE"); setBrain(settings.mode==="smart"?"—":"basic");
+addMsg("sys","AITZAZ VOICE ready — mic dabao aur bolo 🔊 (Ya neeche type karo)");
+if(SR && settings.mode==="smart") setBrain("—");
+
+// Chrome sometimes needs a tap before audio flows at all
+addEventListener("pointerdown",()=>{ ensureCtx(); },{once:true});
+</script>
+</body>
+</html>
