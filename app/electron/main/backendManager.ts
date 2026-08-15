@@ -36,7 +36,10 @@ export class BackendManager {
     this.config = {
       host: '127.0.0.1',
       port: 8765,
-      timeout: 30000, // 30 seconds - Go starts much faster than Python
+      // The Go server now binds its port immediately and downloads model
+      // assets in the background, but leave generous headroom for slow
+      // first-run machines.
+      timeout: 120000,
       ...config,
     }
   }
@@ -296,6 +299,7 @@ export class BackendManager {
   private async waitForReady(): Promise<boolean> {
     const startTime = Date.now()
     const checkInterval = 500 // Check every 500ms
+    let lastLog = 0
 
     while (Date.now() - startTime < this.config.timeout) {
       // Check if process died
@@ -306,6 +310,14 @@ export class BackendManager {
 
       if (await this.isHealthy()) {
         return true
+      }
+
+      const elapsed = Date.now() - startTime
+      if (elapsed - lastLog > 10000) {
+        lastLog = elapsed
+        console.log(
+          `[BackendManager] Still waiting for Go backend... (${Math.round(elapsed / 1000)}s)`
+        )
       }
 
       await new Promise(resolve => setTimeout(resolve, checkInterval))
