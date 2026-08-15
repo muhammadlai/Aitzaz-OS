@@ -1,5 +1,22 @@
 # Troubleshooting
 
+**No voice at all — assistant neither hears you nor speaks** — some link in the
+chain is down. Run the one-shot diagnostic on the Mac that hosts the voice
+server and fix its FAIL lines top to bottom:
+
+```bash
+cd server && scripts/jarvis-doctor.sh
+```
+
+The three most common causes, in order: (1) the voice server never started —
+`config/server.yaml` missing, the launchd job not bootstrapped, or a crash
+(check `~/Library/Logs/jarvis-voice.log`); (2) voice OUT: `ELEVENLABS_API_KEY`
+missing from `~/.hermes/.env`, voice IN: TLS cert untrusted or macOS
+microphone permission denied; (3) the packaged macOS desktop app was built
+without `NSMicrophoneUsageDescription`, so macOS denies its mic access with
+no prompt at all — rebuild the app from current sources, or open the HUD in
+Chrome/Safari instead.
+
 **HUD loads but mic is blocked** — you're on plain http or an untrusted cert.
 Browsers require a secure context for `getUserMedia`. Trust `certs/cert.pem`
 on the device (see SETUP §3) and use `https://`.

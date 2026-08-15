@@ -111,6 +111,12 @@ def load_env() -> None:
 
 
 def load_config() -> dict:
+    if not CONFIG_PATH.exists():
+        raise SystemExit(
+            "Aitzaz voice server cannot start: config/server.yaml not found.\n"
+            f"Run:  cp {ROOT / 'config' / 'server.example.yaml'} {CONFIG_PATH}\n"
+            "then set your ElevenLabs voice_id (see docs/SETUP.md, step 3)."
+        )
     return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
@@ -1204,6 +1210,23 @@ async def websocket_endpoint(ws: WebSocket) -> None:
 
 
 def main() -> int:
+    # Loud, actionable warnings for the two most common "no voice" causes,
+    # instead of silent failure modes (the HUD only sees a generic error).
+    key = (os.environ.get("ELEVENLABS_API_KEY")
+           or os.environ.get("ELEVEN_API_KEY")
+           or os.environ.get("XI_API_KEY"))
+    if not key:
+        print("STARTUP WARNING: ELEVENLABS_API_KEY missing from ~/.hermes/.env — "
+              "spoken replies will fail (no voice output).", flush=True)
+    voice_id = str((CFG.get("voice") or {}).get("voice_id") or "").strip()
+    if not voice_id or "YOUR_" in voice_id.upper():
+        print("STARTUP WARNING: voice.voice_id not configured in config/server.yaml — "
+              "spoken replies will fail (no voice output).", flush=True)
+    hermes_key_env = (CFG.get("hermes") or {}).get("api_key_env", "API_SERVER_KEY")
+    if not os.environ.get(hermes_key_env):
+        print(f"STARTUP WARNING: {hermes_key_env} missing from ~/.hermes/.env — "
+              "agent backend offline, basic mode only.", flush=True)
+
     server = CFG["server"]
     host = server.get("host", "0.0.0.0")
     port = int(server.get("port", 8765))

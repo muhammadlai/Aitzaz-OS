@@ -34,6 +34,12 @@
     category: 'public.app-category.utilities',
     icon: 'build/icon.png',
     artifactName: 'Aitzaz-AI-Pro-Mac-${version}-${arch}.${ext}',
+    // REQUIRED on macOS: without this usage string the packaged app is
+    // denied (or crashes on) microphone access, so voice input never works.
+    extendInfo: {
+      NSMicrophoneUsageDescription:
+        'Aitzaz AI Pro uses the microphone to hear your voice commands.',
+    },
   },
   linux: {
     target: [

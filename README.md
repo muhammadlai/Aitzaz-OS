@@ -149,7 +149,7 @@ evening.
 ```
 server/          FastAPI voice pipeline + HUD host (the core of this project)
 server/hud/      single-file HUD (vanilla JS, no build step)
-server/scripts/  start/stop/health/smoke + cert & boot-audio generators
+server/scripts/  start/stop/health/doctor/smoke + cert & boot-audio generators
 app/             Aitzaz AI Pro — full desktop AI companion (Electron + Vue 3 + Go).
                  Multilingual, wake word, memory/RAG, vision, computer-use tools,
                  Gmail/Calendar, MCP, avatar, permissions (formerly Zara AI).

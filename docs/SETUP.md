@@ -167,8 +167,9 @@ fly in multiple panels from different vectors.
 ## 6. Verify everything
 
 ```bash
-scripts/jarvis-health.sh   # all five rows OK
-scripts/jarvis-smoke.sh    # synthesized voice turn through the full stack (macOS)
+scripts/jarvis-doctor.sh    # full-chain diagnostic — run this FIRST if voice is dead
+scripts/jarvis-health.sh    # all five rows OK
+scripts/jarvis-smoke.sh     # synthesized voice turn through the full stack (macOS)
 ```
 
 Then the real test: click the ring and ask "what's in your memory file?" —

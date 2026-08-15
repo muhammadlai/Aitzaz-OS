@@ -110,6 +110,12 @@ hai).
    (app unsigned hai — ye warning expected hai).
 3. Mic permission allow karo jab prompt aaye.
 
+> **Mic kaam nahi kar raha?** Purane Mac builds (jismein
+> `NSMicrophoneUsageDescription` nahi tha) ka mic macOS **silently** deny kar
+> deta hai — koi prompt hi nahi aata. Fix: latest source se app dobara build
+> karo (ya HUD ko Chrome/Safari mein kholo), aur
+> **System Settings → Privacy & Security → Microphone** mein app ko allow karo.
+
 ## 🐧 Linux
 
 ```bash
