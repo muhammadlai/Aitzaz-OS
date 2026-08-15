@@ -440,6 +440,51 @@ export const useSettingsStore = defineStore('settings', () => {
       migrated = true
     }
 
+    // Zero-config free mode: without an OpenAI key, cloud OpenAI voice/STT/
+    // embeddings can never work, so silently move them to the bundled local
+    // backend. This makes voice work out-of-the-box for OpenRouter/local AI
+    // providers without asking the user for anything extra.
+    const hasOpenAIKeyForVoice = Boolean(validated.VITE_OPENAI_API_KEY?.trim())
+    if (!hasOpenAIKeyForVoice && validated.aiProvider !== 'openai') {
+      if (validated.ttsProvider === 'openai') {
+        validated.ttsProvider = 'local'
+        migrated = true
+      }
+      if (validated.sttProvider === 'openai') {
+        validated.sttProvider = 'local'
+        migrated = true
+      }
+      if (validated.embeddingProvider === 'openai') {
+        validated.embeddingProvider = 'local'
+        migrated = true
+      }
+    }
+
+    // Auto-select a free model for OpenRouter when the current model would
+    // require paid credits the user may not have (or is empty).
+    const FREE_OPENROUTER_DEFAULTS = [
+      'deepseek/deepseek-chat-v3-0324:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+    ]
+    if (
+      validated.aiProvider === 'openrouter' &&
+      (!validated.assistantModel?.trim() ||
+        (!validated.assistantModel.includes(':free') &&
+          !hasOpenAIKeyForVoice))
+    ) {
+      validated.assistantModel = FREE_OPENROUTER_DEFAULTS[0]
+      migrated = true
+    }
+    if (
+      validated.aiProvider === 'openrouter' &&
+      (!validated.SUMMARIZATION_MODEL?.trim() ||
+        validated.SUMMARIZATION_MODEL.startsWith('gpt-'))
+    ) {
+      validated.SUMMARIZATION_MODEL = FREE_OPENROUTER_DEFAULTS[0]
+      migrated = true
+    }
+
     const clampNumeric = (value: unknown, min: number, max: number, fallback: number) => {
       const numeric = Number(value)
       if (!Number.isFinite(numeric)) return fallback
