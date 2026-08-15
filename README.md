@@ -19,8 +19,12 @@ Full **AI operating-system dashboard** in one file: `aitzaz-os.html`.
 Zero servers, zero keys: AI falls back to the built-in demo brain when the
 free endpoint is unreachable ("AI service unavailable — Demo Mode activated").
 Honest labeling: demo lead data is marked as such — external lead provider
-not connected. Try it: download [aitzaz-os.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/arena%2F01a00574-aitzaz-os/aitzaz-os.html)
-→ open in Chrome/Edge/Safari → mic allow → say "Find roofing companies in Texas".
+not connected.
+
+**Open directly (no download):** https://cdn.jsdelivr.net/gh/muhammadlai/Aitzaz-OS@demo-v1/aitzaz-os.html
+**Download:** [aitzaz-os.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/demo-v1/aitzaz-os.html)
+(right-click → Save As → double-click to open in Chrome/Edge/Safari) → mic
+allow → say "Find roofing companies in Texas".
 
 ## ⚡ Zero-setup voice app (koi server, koi key, koi terminal NAHI)
 
