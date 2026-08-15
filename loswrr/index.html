@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0e1a" />
+  <meta name="description" content="LOSWRR AI OS — Your Personal AI Operating System. CEO: Aitzaz." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>LOSWRR AI OS — Your Personal AI Operating System</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="assets/icons/loswrr.svg" />
+  <link rel="apple-touch-icon" href="assets/icons/loswrr-192.png" />
+  <link rel="stylesheet" href="css/loswrr.css" />
+</head>
+<body>
+  <!-- Auth Gate -->
+  <div id="auth-gate" class="auth-gate" hidden>
+    <div class="auth-panel glass">
+      <div class="auth-brand">
+        <div class="auth-logo">
+          <svg viewBox="0 0 100 100" width="64" height="64" aria-hidden="true">
+            <defs>
+              <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#7cf6ff"/>
+                <stop offset="100%" stop-color="#a06bff"/>
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="url(#g1)" stroke-width="2"/>
+            <circle cx="50" cy="50" r="30" fill="none" stroke="url(#g1)" stroke-width="1.5" opacity="0.6"/>
+            <path d="M30 60 Q50 30 70 60" fill="none" stroke="url(#g1)" stroke-width="2.5"/>
+            <circle cx="50" cy="50" r="3" fill="#7cf6ff"/>
+          </svg>
+        </div>
+        <h1>LOSWRR AI OS</h1>
+        <p class="tagline">Your Personal AI Operating System</p>
+      </div>
+      <div class="auth-form">
+        <label for="auth-pin">Security PIN</label>
+        <input id="auth-pin" type="password" inputmode="numeric" autocomplete="off"
+               placeholder="Enter PIN (default: 0000)" maxlength="12" />
+        <button id="auth-submit" class="btn btn-primary">Unlock</button>
+        <p class="auth-hint" id="auth-hint">First-time use? Default PIN is <code>0000</code>. Change it in Settings.</p>
+      </div>
+      <div class="auth-footer">
+        <span>CEO: <strong>Aitzaz</strong></span>
+        <span class="dot">•</span>
+        <span id="auth-mode-badge">Local AI</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app" class="app-shell" hidden>
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="nav-toggle" aria-label="Toggle navigation">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M3 12h18M3 18h18"/>
+          </svg>
+        </button>
+        <div class="brand">
+          <svg viewBox="0 0 100 100" width="28" height="28" aria-hidden="true">
+            <defs>
+              <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#7cf6ff"/>
+                <stop offset="100%" stop-color="#a06bff"/>
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="url(#bg1)" stroke-width="3"/>
+            <path d="M30 60 Q50 30 70 60" fill="none" stroke="url(#bg1)" stroke-width="3"/>
+            <circle cx="50" cy="50" r="3" fill="#7cf6ff"/>
+          </svg>
+          <div class="brand-text">
+            <div class="brand-name">LOSWRR</div>
+            <div class="brand-sub">AI OS</div>
+          </div>
+        </div>
+        <div class="status-pills">
+          <span class="pill" id="pill-provider" title="Active AI provider">
+            <span class="pill-dot"></span><span class="pill-text">Connecting…</span>
+          </span>
+          <span class="pill" id="pill-voice" title="Voice engine">
+            <span class="pill-dot"></span><span class="pill-text">Voice</span>
+          </span>
+          <span class="pill" id="pill-bridge" title="Desktop Bridge">
+            <span class="pill-dot"></span><span class="pill-text">Bridge</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="topbar-center">
+        <div class="ceo-orb" id="ceo-orb" role="status" aria-live="polite">
+          <div class="orb-ring orb-ring-1"></div>
+          <div class="orb-ring orb-ring-2"></div>
+          <div class="orb-core" id="orb-core">
+            <span id="orb-text">IDLE</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button class="icon-btn" id="mic-btn" title="Push to talk" aria-label="Push to talk">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="mute-btn" title="Mute / unmute TTS" aria-label="Mute TTS">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" id="mute-icon">
+            <polygon points="11,5 6,9 2,9 2,15 6,15 11,19" fill="currentColor"/>
+            <path d="M15 9l5 6m0-6l-5 6"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="stop-btn" title="Stop speaking" aria-label="Stop">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="2"/>
+          </svg>
+        </button>
+        <div class="user-chip" title="CEO: Aitzaz">
+          <div class="user-avatar">A</div>
+          <div class="user-meta">
+            <div class="user-name">Aitzaz</div>
+            <div class="user-role">CEO · Owner</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="nav-list" id="nav-list"><!-- populated by JS --></nav>
+      <div class="nav-foot">
+        <div class="mode-badge" id="mode-badge">DEMO MODE</div>
+        <div class="nav-version">v1.0.0 · LOSWRR</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content" id="content">
+      <!-- Views are rendered here -->
+    </main>
+
+    <!-- Activity Drawer (real-time events) -->
+    <section class="activity-drawer" id="activity-drawer" aria-label="Activity log">
+      <header class="activity-head">
+        <div class="activity-title">
+          <span class="dot live"></span>
+          <span>Live Activity</span>
+        </div>
+        <button class="icon-btn small" id="activity-clear" title="Clear log" aria-label="Clear activity">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>
+          </svg>
+        </button>
+      </header>
+      <ul class="activity-list" id="activity-list"></ul>
+    </section>
+
+    <!-- Voice HUD Overlay -->
+    <div class="voice-hud" id="voice-hud" hidden>
+      <div class="voice-hud-ring">
+        <div class="voice-hud-pulse"></div>
+        <div class="voice-hud-core" id="voice-hud-core">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="9" y="3" width="6" height="12" rx="3"/>
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
+          </svg>
+        </div>
+      </div>
+      <div class="voice-hud-text" id="voice-hud-text">Listening…</div>
+      <div class="voice-hud-transcript" id="voice-hud-transcript"></div>
+    </div>
+
+    <!-- Command Bar (bottom) -->
+    <footer class="commandbar">
+      <div class="cmd-hint" id="cmd-hint">
+        <kbd>⌘</kbd><kbd>K</kbd> to command · <kbd>Space</kbd> to talk
+      </div>
+      <div class="cmd-input-wrap">
+        <span class="cmd-prefix">›</span>
+        <input id="cmd-input" type="text" placeholder='Say or type a command, Sir Aitzaz… (e.g. "find remote jobs")' />
+        <button class="cmd-send" id="cmd-send" aria-label="Send command">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+            <path d="M3 12l18-9-7 18-3-7-8-2z"/>
+          </svg>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Approval Modal -->
+    <div class="modal" id="approval-modal" hidden>
+      <div class="modal-backdrop"></div>
+      <div class="modal-panel glass">
+        <header class="modal-head">
+          <div class="modal-title">
+            <span class="warn-icon">⚠</span>
+            <span>Action requires your approval, Sir Aitzaz</span>
+          </div>
+        </header>
+        <div class="modal-body" id="approval-body"></div>
+        <footer class="modal-foot">
+          <button class="btn btn-ghost" id="approval-deny">Deny</button>
+          <button class="btn btn-primary" id="approval-allow">Approve</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toasts" aria-live="polite"></div>
+  </div>
+
+  <!-- Scripts: load order matters -->
+  <script src="js/data/demoData.js"></script>
+  <script src="js/services/storage.js"></script>
+  <script src="js/services/crypto.js"></script>
+  <script src="js/services/providers.js"></script>
+  <script src="js/services/voice.js"></script>
+  <script src="js/services/bridge.js"></script>
+  <script src="js/services/memory.js"></script>
+  <script src="js/services/search.js"></script>
+  <script src="js/services/scheduler.js"></script>
+  <script src="js/services/research.js"></script>
+  <script src="js/services/email.js"></script>
+  <script src="js/services/browser.js"></script>
+  <script src="js/services/files.js"></script>
+  <script src="js/services/security.js"></script>
+  <script src="js/services/automation.js"></script>
+  <script src="js/agents/ceo.js"></script>
+  <script src="js/agents/researchAgent.js"></script>
+  <script src="js/agents/jobHunter.js"></script>
+  <script src="js/agents/leadHunter.js"></script>
+  <script src="js/agents/salesAgent.js"></script>
+  <script src="js/agents/crmAgent.js"></script>
+  <script src="js/agents/emailAgent.js"></script>
+  <script src="js/agents/browserAgent.js"></script>
+  <script src="js/agents/computerAgent.js"></script>
+  <script src="js/agents/memoryAgent.js"></script>
+  <script src="js/agents/codingAgent.js"></script>
+  <script src="js/agents/fileAgent.js"></script>
+  <script src="js/agents/taskAgent.js"></script>
+  <script src="js/agents/reportAgent.js"></script>
+  <script src="js/services/orchestrator.js"></script>
+  <script src="js/views.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
