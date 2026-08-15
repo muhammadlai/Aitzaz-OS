@@ -1,5 +1,27 @@
 # Aitzaz AI Pro — Voice + HUD for Hermes Agent
 
+## 🖥️ AITZAZ-OS AI Command Center (zero-setup demo)
+
+Full **AI operating-system dashboard** in one file: `aitzaz-os.html`.
+
+- **Command Center** — AI chat with THINKING → PROCESSING → RESPONSE states,
+  CEO orchestrator (Lead Hunter · Research · CRM · Sales · Email · Memory)
+  with animated workflows: USER → CEO → AGENTS → CEO REPORT
+- **Voice AI** — browser SpeechRecognition + speechSynthesis
+  (IDLE / LISTENING / PROCESSING / SPEAKING)
+- **CRM** — 10 Texas roofing demo leads: search, filter, sort, edit, add,
+  delete, 6 statuses, lead scores
+- **Memory** — "Remember that…" → stored persistently; "What is my target
+  market?" → correct recall (Supabase-ready structure)
+- **Tasks** — AI-generated follow-ups with priority/status/due controls
+- **Live Activity stream, System Health, Settings, Demo Commands**
+
+Zero servers, zero keys: AI falls back to the built-in demo brain when the
+free endpoint is unreachable ("AI service unavailable — Demo Mode activated").
+Honest labeling: demo lead data is marked as such — external lead provider
+not connected. Try it: download [aitzaz-os.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/arena%2F01a00574-aitzaz-os/aitzaz-os.html)
+→ open in Chrome/Edge/Safari → mic allow → say "Find roofing companies in Texas".
+
 ## ⚡ Zero-setup voice app (koi server, koi key, koi terminal NAHI)
 
 Bus **`aitzaz-voice.html`** kholo browser mein (Chrome/Edge/Safari) → mic allow
