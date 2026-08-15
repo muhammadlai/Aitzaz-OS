@@ -9,16 +9,18 @@
  *  - Account records (email + scrypt password hash + salt) live in
  *    `aitzaz-users.json` inside the OS user-data directory with 0600 perms.
  *    Plain-text passwords are never written to disk or logs.
- *  - The active session is a payload encrypted with Electron `safeStorage`,
- *    which delegates to the OS credential store (DPAPI on Windows, Keychain
- *    on macOS, libsecret/GNOME Keyring/KWallet on Linux). The session blob
- *    is only persisted when the user opts into "keep me signed in";
- *    otherwise the session lives in memory for the current run only.
+ *  - The active session is a payload encrypted with Electron `safeStorage`
+ *    (OS credential store: DPAPI on Windows, Keychain on macOS,
+ *    libsecret/GNOME Keyring/KWallet on Linux). On systems without a keyring
+ *    daemon an AES-256-GCM local fallback is used so "keep me signed in"
+ *    still survives restarts everywhere. The session blob is only persisted
+ *    when the user opts into "keep me signed in"; otherwise the session
+ *    lives in memory for the current run only.
  *  - Renderer access goes through a narrow IPC surface (auth:sign-up,
  *    auth:login, auth:logout, auth:session) that is allowlisted in
  *    `ipcBridgePolicy.ts`.
  */
-import { app, ipcMain, safeStorage } from 'electron'
+import { app, ipcMain } from 'electron'
 import crypto from 'node:crypto'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -34,6 +36,10 @@ import {
   verifyPassword,
   type SessionPayload,
 } from './authCore'
+import {
+  decryptProtected,
+  encryptProtected,
+} from './protectedStorage'
 import { getMainWindow } from './windowManager'
 
 const USERS_FILE_NAME = 'aitzaz-users.json'
@@ -154,14 +160,6 @@ function notifySessionChanged(active: boolean, email?: string): void {
 // Session persistence (safeStorage / OS keychain)
 // ---------------------------------------------------------------------------
 
-function safeStorageAvailable(): boolean {
-  try {
-    return safeStorage.isEncryptionAvailable()
-  } catch {
-    return false
-  }
-}
-
 async function persistSession(payload: SessionPayload): Promise<void> {
   ensurePaths()
   if (!payload.remember) {
@@ -170,13 +168,10 @@ async function persistSession(payload: SessionPayload): Promise<void> {
     await fs.rm(sessionFilePath!, { force: true })
     return
   }
-  if (!safeStorageAvailable()) {
-    console.warn(
-      '[UserAuth] OS credential storage unavailable; session will not survive a restart.'
-    )
-    return
-  }
-  const encrypted = safeStorage.encryptString(JSON.stringify(payload))
+  // OS keychain when available, otherwise the local AES-256-GCM fallback —
+  // the session now survives restarts on every system (including Linux
+  // machines without a keyring daemon).
+  const encrypted = await encryptProtected(JSON.stringify(payload))
   await writePrivateFile(sessionFilePath!, encrypted)
 }
 
@@ -186,14 +181,10 @@ async function loadPersistedSession(): Promise<SessionPayload | null> {
     if (!(await fileExists(sessionFilePath!))) {
       return null
     }
-    if (!safeStorageAvailable()) {
-      console.warn(
-        '[UserAuth] OS credential storage unavailable; cannot restore persisted session.'
-      )
-      return null
-    }
     const encrypted = await fs.readFile(sessionFilePath!)
-    const payload = parseSessionPayload(JSON.parse(safeStorage.decryptString(encrypted)))
+    const payload = parseSessionPayload(
+      JSON.parse(await decryptProtected(encrypted))
+    )
     return payload
   } catch (error) {
     console.warn('[UserAuth] Failed to restore persisted session:', error)
