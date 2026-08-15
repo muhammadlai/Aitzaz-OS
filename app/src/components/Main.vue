@@ -1,5 +1,8 @@
 <template>
-  <div class="h-screen flex w-full items-center justify-start relative">
+  <div
+    data-theme="dark"
+    class="h-screen flex w-full items-center justify-start relative"
+  >
     <div
       class="avatar-wrapper flex container h-full items-center justify-center relative z-2"
       :class="{ mini: isMinimized }"
@@ -43,6 +46,7 @@
             :audioState="audioState"
           />
         </div>
+        <VoiceControls />
       </div>
       <Sidebar @processRequest="processRequestFromSidebar" />
     </div>
@@ -55,8 +59,10 @@ import type { CSSProperties } from 'vue'
 import { storeToRefs } from 'pinia'
 import Actions from './Actions.vue'
 import Sidebar from './Sidebar.vue'
+import VoiceControls from './VoiceControls.vue'
 
 import { useGeneralStore } from '../stores/generalStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { useConversationStore } from '../stores/conversationStore'
 import {
   indexMessageForThoughts,
@@ -80,6 +86,7 @@ const {
 } = useScreenshot()
 
 const generalStore = useGeneralStore()
+const settingsStore = useSettingsStore()
 const conversationStore = useConversationStore()
 
 const {
@@ -120,6 +127,16 @@ const avatarRingStyle = computed<CSSProperties>(() => {
 onMounted(async () => {
   audioPlayer.value = audioPlayerElement.value
   aiVideo.value = aiVideoElement.value
+
+  // Sync the automatic voice-response preference from persisted settings
+  // (defaults to ON once voice is configured) and apply the saved volume.
+  generalStore.isTTSEnabled = settingsStore.settings.voiceResponseEnabled
+  if (audioPlayer.value) {
+    const volume = Number(settingsStore.settings.ttsVolume)
+    audioPlayer.value.volume = Number.isFinite(volume)
+      ? Math.min(1, Math.max(0, volume))
+      : 1
+  }
 
   if (aiVideo.value) {
     aiVideo.value

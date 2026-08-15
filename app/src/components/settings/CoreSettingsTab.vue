@@ -97,16 +97,21 @@
           <label for="openai-key" class="block mb-1 text-sm"
             >OpenAI API Key *</label
           >
-          <input
-            id="openai-key"
-            type="password"
-            v-model="currentSettings.VITE_OPENAI_API_KEY"
-            class="input focus:outline-none w-full"
-            autocomplete="new-password"
+          <SecretKeyInput
+            :model-value="currentSettings.VITE_OPENAI_API_KEY"
+            :saved-value="savedOpenAIKey"
             placeholder="sk-..."
+            test-label="Test Connection"
+            :test-passed="openAIKeyTestState"
+            @update:model-value="
+              value => $emit('update:setting', 'VITE_OPENAI_API_KEY', value)
+            "
+            @test="$emit('test-connection')"
           />
           <p class="text-xs text-gray-400 mt-1">
-            Required for TTS/STT/embeddings regardless of AI provider.
+            Required for TTS/STT/embeddings regardless of AI provider. Stored
+            encrypted in the OS credential store; only the last 4 characters
+            are ever shown.
           </p>
         </div>
         <div v-if="currentSettings.aiProvider === 'openrouter'">
@@ -465,9 +470,88 @@
             <option value="local">Local (Piper)</option>
           </select>
           <p class="text-xs text-gray-400 mt-1">
-            Choose between cloud-based OpenAI TTS or local Piper TTS.
+            Choose between cloud-based OpenAI TTS or local Piper TTS. If the
+            selected provider fails, Aitzaz automatically falls back to local
+            Piper TTS so voice keeps working.
           </p>
         </div>
+
+        <!-- Voice output behavior -->
+        <div class="md:col-span-2">
+          <div
+            class="rounded-lg border border-gray-700 bg-gray-800/60 p-3 space-y-3"
+          >
+            <label class="flex items-center justify-between gap-3 cursor-pointer">
+              <span>
+                <span class="text-sm font-medium">Voice Response</span>
+                <span class="block text-xs text-gray-400">
+                  Automatically speak every AI response out loud.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                class="toggle toggle-primary"
+                :checked="currentSettings.voiceResponseEnabled"
+                @change="
+                  e =>
+                    $emit(
+                      'update:setting',
+                      'voiceResponseEnabled',
+                      (e.target as HTMLInputElement).checked
+                    )
+                "
+              />
+            </label>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label for="tts-volume" class="block mb-1 text-sm">
+                  Volume: {{ Math.round((currentSettings.ttsVolume ?? 1) * 100) }}%
+                </label>
+                <input
+                  id="tts-volume"
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  class="range range-primary range-xs w-full"
+                  :value="currentSettings.ttsVolume ?? 1"
+                  @input="
+                    e =>
+                      $emit(
+                        'update:setting',
+                        'ttsVolume',
+                        parseFloat((e.target as HTMLInputElement).value)
+                      )
+                  "
+                />
+              </div>
+              <div>
+                <label for="tts-speed" class="block mb-1 text-sm">
+                  Speech Speed: {{ (currentSettings.ttsSpeed ?? 1).toFixed(2) }}x
+                </label>
+                <input
+                  id="tts-speed"
+                  type="range"
+                  min="0.5"
+                  max="2"
+                  step="0.05"
+                  class="range range-primary range-xs w-full"
+                  :value="currentSettings.ttsSpeed ?? 1"
+                  @input="
+                    e =>
+                      $emit(
+                        'update:setting',
+                        'ttsSpeed',
+                        parseFloat((e.target as HTMLInputElement).value)
+                      )
+                  "
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div v-if="currentSettings.ttsProvider === 'openai'">
           <label for="tts-voice" class="block mb-1 text-sm"
             >OpenAI TTS Voice</label
@@ -775,8 +859,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { AliceSettings } from '../../stores/settingsStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 import { backendApi, type Voice } from '../../services/backendApi'
 import { useCodexAuth } from '../../composables/useCodexAuth'
+import SecretKeyInput from '../common/SecretKeyInput.vue'
 
 // Type for service status
 interface ServiceStatus {
@@ -792,7 +878,22 @@ const emit = defineEmits<{
     key: keyof AliceSettings,
     value: string | boolean | number | string[],
   ]
+  'test-connection': []
 }>()
+
+const settingsStore = useSettingsStore()
+
+// The persisted key (secure storage) is the baseline for the masked view;
+// the draft copy in currentSettings holds in-progress edits.
+const savedOpenAIKey = computed(
+  () => settingsStore.settings.VITE_OPENAI_API_KEY || ''
+)
+
+const openAIKeyTestState = computed<boolean | null>(() => {
+  if (!savedOpenAIKey.value) return null
+  if (settingsStore.coreOpenAISettingsValid) return true
+  return null
+})
 
 const serviceStatus = ref<{
   stt: ServiceStatus

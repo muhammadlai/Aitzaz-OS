@@ -20,6 +20,7 @@
           :form-data="formData"
           :test-result="testResult"
           :is-testing="isTesting"
+          :saved-config="savedConfigSnapshot"
           @test-openai="testOpenAIKey"
           @test-openrouter="testOpenRouterKey"
           @test-zai="testZAIKey"
@@ -169,6 +170,113 @@ const testResult = reactive({
 
 const isFinishing = ref(false)
 
+/**
+ * Snapshot of credentials already saved in secure storage when the wizard
+ * opened. The provider step uses it to render masked "saved key" cards so
+ * returning users are never asked for their API key again.
+ */
+const savedConfigSnapshot = reactive<Record<string, string>>({})
+
+function captureSavedConfigSnapshot() {
+  const saved = settingsStore.settings
+  savedConfigSnapshot.VITE_OPENAI_API_KEY = saved.VITE_OPENAI_API_KEY || ''
+  savedConfigSnapshot.VITE_OPENROUTER_API_KEY =
+    saved.VITE_OPENROUTER_API_KEY || ''
+  savedConfigSnapshot.VITE_ZAI_API_KEY = saved.VITE_ZAI_API_KEY || ''
+  savedConfigSnapshot.VITE_MINIMAX_API_KEY = saved.VITE_MINIMAX_API_KEY || ''
+  savedConfigSnapshot.VITE_DEEPSEEK_API_KEY =
+    saved.VITE_DEEPSEEK_API_KEY || ''
+}
+
+/**
+ * Pre-fill the wizard from the persisted provider configuration so a saved
+ * setup is reused instead of re-requested.
+ */
+function prefillFromSavedSettings() {
+  const saved = settingsStore.settings
+  if (!saved) return
+
+  formData.VITE_OPENAI_API_KEY = saved.VITE_OPENAI_API_KEY || ''
+  formData.VITE_OPENROUTER_API_KEY = saved.VITE_OPENROUTER_API_KEY || ''
+  formData.VITE_ZAI_API_KEY = saved.VITE_ZAI_API_KEY || ''
+  formData.VITE_MINIMAX_API_KEY = saved.VITE_MINIMAX_API_KEY || ''
+  formData.VITE_DEEPSEEK_API_KEY = saved.VITE_DEEPSEEK_API_KEY || ''
+  formData.VITE_GROQ_API_KEY = saved.VITE_GROQ_API_KEY || ''
+  formData.VITE_GOOGLE_API_KEY = saved.VITE_GOOGLE_API_KEY || ''
+
+  formData.aiProvider = saved.aiProvider || formData.aiProvider
+  formData.assistantModel = saved.assistantModel || formData.assistantModel
+  formData.summarizationModel =
+    saved.SUMMARIZATION_MODEL || formData.summarizationModel
+  formData.sttProvider = saved.sttProvider || formData.sttProvider
+  formData.ttsProvider = saved.ttsProvider || formData.ttsProvider
+  formData.embeddingProvider =
+    saved.embeddingProvider || formData.embeddingProvider
+
+  formData.ollamaBaseUrl = saved.ollamaBaseUrl || formData.ollamaBaseUrl
+  formData.lmStudioBaseUrl = saved.lmStudioBaseUrl || formData.lmStudioBaseUrl
+  formData.zaiBaseUrl = saved.zaiBaseUrl || formData.zaiBaseUrl
+  formData.minimaxBaseUrl = saved.minimaxBaseUrl || formData.minimaxBaseUrl
+  formData.deepseekBaseUrl = saved.deepseekBaseUrl || formData.deepseekBaseUrl
+  formData.codexAuthConnected = Boolean(saved.codexAuthConnected)
+  formData.codexAccountLabel = saved.codexAccountLabel || ''
+  formData.localSttLanguage = saved.localSttLanguage || 'auto'
+}
+
+/**
+ * Silently verify the saved provider configuration when the wizard opens so
+ * returning users immediately see "Connected" and can continue without
+ * re-entering or re-testing their key manually.
+ */
+async function autoTestSavedProvider() {
+  switch (formData.aiProvider) {
+    case 'openai':
+      if (formData.VITE_OPENAI_API_KEY.trim()) {
+        await testOpenAIKey()
+      }
+      break
+    case 'openrouter':
+      if (formData.VITE_OPENROUTER_API_KEY.trim()) {
+        await testOpenRouterKey()
+      }
+      break
+    case 'zai':
+      if (formData.VITE_ZAI_API_KEY.trim() && formData.zaiBaseUrl.trim()) {
+        await testZAIKey()
+      }
+      break
+    case 'minimax':
+      if (
+        formData.VITE_MINIMAX_API_KEY.trim() &&
+        formData.minimaxBaseUrl.trim()
+      ) {
+        await testMiniMaxKey()
+      }
+      break
+    case 'deepseek':
+      if (
+        formData.VITE_DEEPSEEK_API_KEY.trim() &&
+        formData.deepseekBaseUrl.trim()
+      ) {
+        await testDeepSeekKey()
+      }
+      break
+    case 'codex':
+      await syncCodexStatus()
+      break
+    case 'ollama':
+      if (formData.ollamaBaseUrl.trim()) {
+        await testOllamaConnection()
+      }
+      break
+    case 'lm-studio':
+      if (formData.lmStudioBaseUrl.trim()) {
+        await testLMStudioConnection()
+      }
+      break
+  }
+}
+
 const currentStepTitle = computed(() => {
   const titles = {
     1: 'Welcome to Aitzaz AI Pro',
@@ -235,6 +343,11 @@ onMounted(() => {
   window.electron?.resize?.(WIZARD_WINDOW_SIZE)
   window.aliceIPC?.on?.('codex-auth-status-changed', handleCodexStatus)
   window.aliceIPC?.on?.('codex-auth-login-completed', handleCodexLogin)
+
+  // Reuse any persisted provider configuration instead of asking again.
+  captureSavedConfigSnapshot()
+  prefillFromSavedSettings()
+  void autoTestSavedProvider()
 })
 
 onUnmounted(() => {
@@ -264,6 +377,27 @@ watch(
   }
 )
 
+/**
+ * After discovering models from a provider, keep the user's saved model
+ * choices when they are still available instead of snapping back to the
+ * first model in the list.
+ */
+const applyDiscoveredModels = () => {
+  if (formData.availableModels.length === 0) return
+  const preferredAssistant = formData.assistantModel
+  const preferredSummarization = formData.summarizationModel
+  formData.assistantModel = formData.availableModels.includes(
+    preferredAssistant
+  )
+    ? preferredAssistant
+    : formData.availableModels[0]
+  formData.summarizationModel = formData.availableModels.includes(
+    preferredSummarization
+  )
+    ? preferredSummarization
+    : formData.availableModels[0]
+}
+
 const fetchAvailableModels = async () => {
   try {
     let baseURL = ''
@@ -281,10 +415,7 @@ const fetchAvailableModels = async () => {
       const models = await listCodexModels()
       formData.availableModels = models.map(model => model.id)
 
-      if (formData.availableModels.length > 0) {
-        formData.assistantModel = formData.availableModels[0]
-        formData.summarizationModel = formData.availableModels[0]
-      }
+      applyDiscoveredModels()
       return
     } else {
       return
@@ -297,10 +428,7 @@ const fetchAvailableModels = async () => {
       )
       formData.availableModels = models.map(model => model.id)
 
-      if (formData.availableModels.length > 0) {
-        formData.assistantModel = formData.availableModels[0]
-        formData.summarizationModel = formData.availableModels[0]
-      }
+      applyDiscoveredModels()
       return
     }
 
@@ -311,10 +439,7 @@ const fetchAvailableModels = async () => {
       )
       formData.availableModels = models.map(model => model.id)
 
-      if (formData.availableModels.length > 0) {
-        formData.assistantModel = formData.availableModels[0]
-        formData.summarizationModel = formData.availableModels[0]
-      }
+      applyDiscoveredModels()
       return
     }
 
@@ -325,10 +450,7 @@ const fetchAvailableModels = async () => {
       )
       formData.availableModels = models.map(model => model.id)
 
-      if (formData.availableModels.length > 0) {
-        formData.assistantModel = formData.availableModels[0]
-        formData.summarizationModel = formData.availableModels[0]
-      }
+      applyDiscoveredModels()
       return
     }
 
@@ -341,10 +463,7 @@ const fetchAvailableModels = async () => {
     const models = await tempClient.models.list()
     formData.availableModels = models.data.map(model => model.id)
 
-    if (formData.availableModels.length > 0) {
-      formData.assistantModel = formData.availableModels[0]
-      formData.summarizationModel = formData.availableModels[0]
-    }
+    applyDiscoveredModels()
   } catch (error) {
     console.error('Failed to fetch models:', error)
     formData.availableModels = []

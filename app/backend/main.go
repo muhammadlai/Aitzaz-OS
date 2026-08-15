@@ -23,25 +23,31 @@ func main() {
 	// Initialize model manager
 	modelManager := models.NewManager(cfg)
 
-	// Initialize services
-	ctx := context.Background()
-	if err := modelManager.Initialize(ctx); err != nil {
-		slog.Error("Failed to initialize model manager", "error", err)
-		os.Exit(1)
-	}
-
 	// Create API handler
 	apiHandler := api.NewHandler(cfg, modelManager)
 
 	// Create server
 	srv := server.NewServer(cfg, apiHandler)
 
-	// Start server in a goroutine
+	// Start the HTTP server FIRST so the desktop app can connect within its
+	// startup timeout. Model services (whisper/piper/minilm) download large
+	// assets on first run and can take minutes on slow connections; they are
+	// initialized in the background and report readiness via /api/health.
 	go func() {
 		slog.Info("Starting HTTP server", "host", "127.0.0.1", "port", cfg.Server.Port)
 		if err := srv.Start(cfg.Server.Port); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("Server error", "error", err)
 			os.Exit(1)
+		}
+	}()
+
+	// Initialize services (downloads models on first run).
+	ctx := context.Background()
+	go func() {
+		if err := modelManager.Initialize(ctx); err != nil {
+			slog.Error("Failed to initialize model manager", "error", err)
+		} else {
+			slog.Info("Model manager initialized; STT/TTS/embeddings ready")
 		}
 	}()
 

@@ -49,6 +49,9 @@ import {
 import type { AppChatMessageContentPart } from '../types/chat'
 import type { RagSearchResult } from '../types/rag'
 import type { EmbeddingInputType } from './backendApi'
+import { getTtsFallbackChain } from './ttsRouter'
+import { redactSecretsFromText } from '../utils/maskSecret'
+import { isExpectedAbortError } from '../utils/isAbortError'
 
 /**
  * Parse WAV file ArrayBuffer and extract raw PCM audio data as Float32Array
@@ -246,6 +249,48 @@ function removeLinksFromText(text: string): string {
     .trim()
 }
 
+async function synthesizeWithLocalPiper(
+  text: string,
+  signal: AbortSignal
+): Promise<Response> {
+  const settings = useSettingsStore().config
+  const { backendApi } = await import('./backendApi')
+
+  const ttsReady = await backendApi.isTTSReady()
+  if (!ttsReady) {
+    throw new Error('Local TTS service is not ready')
+  }
+
+  const speechResult = await backendApi.synthesizeSpeech(
+    text,
+    settings.localTtsVoice,
+    settings.ttsSpeed
+  )
+
+  if (signal.aborted) {
+    throw new Error('TTS request aborted')
+  }
+
+  if (!speechResult.audio || speechResult.audio.length === 0) {
+    throw new Error('Local TTS returned no audio')
+  }
+
+  // Convert number array to ArrayBuffer
+  const audioBuffer = new ArrayBuffer(speechResult.audio.length)
+  const audioView = new Uint8Array(audioBuffer)
+  audioView.set(speechResult.audio)
+
+  const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' })
+  return new Response(audioBlob, {
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      'Content-Type': 'audio/wav',
+      'Content-Length': audioBuffer.byteLength.toString(),
+    },
+  })
+}
+
 export const ttsStream = async (
   text: string,
   signal: AbortSignal
@@ -256,53 +301,52 @@ export const ttsStream = async (
     return new Response(null, { status: 204, statusText: 'No Content' })
   }
 
-  if (settings.ttsProvider === 'local') {
+  const chain = getTtsFallbackChain({
+    ttsProvider: settings.ttsProvider,
+    VITE_OPENAI_API_KEY: settings.VITE_OPENAI_API_KEY,
+    VITE_GOOGLE_API_KEY: settings.VITE_GOOGLE_API_KEY,
+  })
+
+  const errors: string[] = []
+  for (const provider of chain) {
+    if (signal.aborted) {
+      throw new Error('TTS request aborted')
+    }
     try {
-      // Import the backend API
-      const { backendApi } = await import('./backendApi')
-
-      const ttsReady = await backendApi.isTTSReady()
-
-      if (!ttsReady) {
-        return fallbackToOpenAITTS(cleanedText, signal)
+      let response: Response
+      if (provider === 'local') {
+        response = await synthesizeWithLocalPiper(cleanedText, signal)
+      } else if (provider === 'google') {
+        response = await googleTTS(cleanedText, signal)
+      } else {
+        response = await openAITTS(cleanedText, signal)
       }
 
-      const speechResult = await backendApi.synthesizeSpeech(
-        cleanedText,
-        settings.localTtsVoice
-      )
-
-      if (!speechResult.audio) {
-        return fallbackToOpenAITTS(cleanedText, signal)
+      if (response.status === 204 || (response.ok && response.body !== undefined)) {
+        if (errors.length > 0) {
+          console.warn(
+            `[TTS] Synthesized with fallback provider "${provider}" after: ${errors.join('; ')}`
+          )
+        }
+        return response
       }
-
-      // Convert number array to ArrayBuffer
-      const audioBuffer = new ArrayBuffer(speechResult.audio.length)
-      const audioView = new Uint8Array(audioBuffer)
-      audioView.set(speechResult.audio)
-
-      const audioBlob = new Blob([audioBuffer], { type: 'audio/wav' })
-      return new Response(audioBlob, {
-        status: 200,
-        statusText: 'OK',
-        headers: {
-          'Content-Type': 'audio/wav',
-          'Content-Length': audioBuffer.byteLength.toString(),
-        },
-      })
+      errors.push(`${provider}: HTTP ${response.status}`)
     } catch (error: any) {
-      return fallbackToOpenAITTS(cleanedText, signal)
+      if (signal.aborted || isExpectedAbortError(error)) {
+        throw error
+      }
+      const message = error?.message || String(error)
+      errors.push(`${provider}: ${redactSecretsFromText(message)}`)
+      console.warn(
+        `[TTS] Provider "${provider}" failed, trying next in chain:`,
+        redactSecretsFromText(message)
+      )
     }
-  } else if (settings.ttsProvider === 'google') {
-    try {
-      return await googleTTS(cleanedText, signal)
-    } catch (error) {
-      console.error('Google TTS failed, falling back to OpenAI:', error)
-      return fallbackToOpenAITTS(cleanedText, signal)
-    }
-  } else {
-    return fallbackToOpenAITTS(cleanedText, signal)
   }
+
+  throw new Error(
+    `All TTS providers failed: ${redactSecretsFromText(errors.join(' | '))}`
+  )
 }
 
 const googleTTS = async (
@@ -336,6 +380,7 @@ const googleTTS = async (
         },
         audioConfig: {
           audioEncoding: 'MP3',
+          speakingRate: clampSpeakingRate(settingsStore.config.ttsSpeed),
         },
       }),
     }
@@ -359,8 +404,19 @@ const googleTTS = async (
   return new Response(blob)
 }
 
-// Helper function for OpenAI TTS (extracted from original function)
-const fallbackToOpenAITTS = async (
+function clampSpeakingRate(speed: number | undefined): number {
+  const numeric = Number(speed)
+  if (!Number.isFinite(numeric)) {
+    return 1.0
+  }
+  // OpenAI supports 0.25-4.0, Google supports 0.25-4.0 as well. Keep both
+  // inside a conservative, always-valid window.
+  return Math.min(2.0, Math.max(0.5, numeric))
+}
+
+// OpenAI TTS synthesis. Uses gpt-4o-mini-tts; if the configured key does not
+// have access to it, the caller (ttsStream) falls back to the next provider.
+const openAITTS = async (
   text: string,
   signal: AbortSignal
 ): Promise<Response> => {
@@ -373,7 +429,8 @@ const fallbackToOpenAITTS = async (
       voice: settings.ttsVoice || 'nova',
       input: text,
       response_format: 'mp3',
-    },
+      speed: clampSpeakingRate(settings.ttsSpeed),
+    } as any,
     { signal }
   )
 }

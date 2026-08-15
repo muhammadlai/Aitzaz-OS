@@ -73,29 +73,17 @@
         <label class="label">
           <span class="label-text">OpenAI API Key</span>
         </label>
-        <input
-          type="password"
+        <SecretKeyInput
           v-model="formData.VITE_OPENAI_API_KEY"
+          :saved-value="savedConfig.VITE_OPENAI_API_KEY"
           placeholder="sk-..."
-          class="input input-bordered w-full focus:input-primary"
-          :class="{
-            'input-error':
-              testResult.openai.error && !testResult.openai.success,
-          }"
+          :busy="isTesting.openai"
+          test-label="Test OpenAI Key"
+          :test-passed="testPassedState(testResult.openai)"
+          :has-error="Boolean(testResult.openai.error) && !testResult.openai.success"
+          @test="$emit('test-openai')"
         />
       </div>
-
-      <button
-        @click="$emit('test-openai')"
-        class="btn btn-secondary w-full"
-        :disabled="isTesting.openai || !formData.VITE_OPENAI_API_KEY.trim()"
-      >
-        <span
-          v-if="isTesting.openai"
-          class="loading loading-spinner loading-xs mr-2"
-        ></span>
-        Test OpenAI Key
-      </button>
 
       <TestResult :result="testResult.openai" />
     </div>
@@ -133,31 +121,20 @@
             >OpenRouter Platform</a
           >
         </div>
-        <input
-          type="password"
+        <SecretKeyInput
           v-model="formData.VITE_OPENROUTER_API_KEY"
+          :saved-value="savedConfig.VITE_OPENROUTER_API_KEY"
           placeholder="sk-or-v1-..."
-          class="input input-bordered w-full focus:input-primary"
-          :class="{
-            'input-error':
-              testResult.openrouter.error && !testResult.openrouter.success,
-          }"
+          :busy="isTesting.openrouter"
+          test-label="Test OpenRouter Key"
+          :test-passed="testPassedState(testResult.openrouter)"
+          :has-error="
+            Boolean(testResult.openrouter.error) &&
+            !testResult.openrouter.success
+          "
+          @test="$emit('test-openrouter')"
         />
       </div>
-
-      <button
-        @click="$emit('test-openrouter')"
-        class="btn btn-secondary w-full"
-        :disabled="
-          isTesting.openrouter || !formData.VITE_OPENROUTER_API_KEY.trim()
-        "
-      >
-        <span
-          v-if="isTesting.openrouter"
-          class="loading loading-spinner loading-xs mr-2"
-        ></span>
-        Test OpenRouter Key
-      </button>
 
       <TestResult :result="testResult.openrouter" />
     </div>
@@ -188,14 +165,15 @@
         <label class="label">
           <span class="label-text">Z.ai API Key</span>
         </label>
-        <input
-          type="password"
+        <SecretKeyInput
           v-model="formData.VITE_ZAI_API_KEY"
+          :saved-value="savedConfig.VITE_ZAI_API_KEY"
           placeholder="..."
-          class="input input-bordered w-full focus:input-primary"
-          :class="{
-            'input-error': testResult.zai.error && !testResult.zai.success,
-          }"
+          :busy="isTesting.zai"
+          test-label="Test Z.ai Key"
+          :test-passed="testPassedState(testResult.zai)"
+          :has-error="Boolean(testResult.zai.error) && !testResult.zai.success"
+          @test="$emit('test-zai')"
         />
       </div>
 
@@ -213,22 +191,6 @@
           }"
         />
       </div>
-
-      <button
-        @click="$emit('test-zai')"
-        class="btn btn-secondary w-full"
-        :disabled="
-          isTesting.zai ||
-          !formData.VITE_ZAI_API_KEY.trim() ||
-          !formData.zaiBaseUrl.trim()
-        "
-      >
-        <span
-          v-if="isTesting.zai"
-          class="loading loading-spinner loading-xs mr-2"
-        ></span>
-        Test Z.ai Key
-      </button>
 
       <TestResult :result="testResult.zai" />
 
@@ -300,15 +262,17 @@
         <label class="label">
           <span class="label-text">MiniMax API Key</span>
         </label>
-        <input
-          type="password"
+        <SecretKeyInput
           v-model="formData.VITE_MINIMAX_API_KEY"
+          :saved-value="savedConfig.VITE_MINIMAX_API_KEY"
           placeholder="..."
-          class="input input-bordered w-full focus:input-primary"
-          :class="{
-            'input-error':
-              testResult.minimax.error && !testResult.minimax.success,
-          }"
+          :busy="isTesting.minimax"
+          test-label="Test MiniMax Key"
+          :test-passed="testPassedState(testResult.minimax)"
+          :has-error="
+            Boolean(testResult.minimax.error) && !testResult.minimax.success
+          "
+          @test="$emit('test-minimax')"
         />
       </div>
 
@@ -327,22 +291,6 @@
           }"
         />
       </div>
-
-      <button
-        @click="$emit('test-minimax')"
-        class="btn btn-secondary w-full"
-        :disabled="
-          isTesting.minimax ||
-          !formData.VITE_MINIMAX_API_KEY.trim() ||
-          !formData.minimaxBaseUrl.trim()
-        "
-      >
-        <span
-          v-if="isTesting.minimax"
-          class="loading loading-spinner loading-xs mr-2"
-        ></span>
-        Test MiniMax Key
-      </button>
 
       <TestResult :result="testResult.minimax" />
 
@@ -414,15 +362,17 @@
         <label class="label">
           <span class="label-text">DeepSeek API Key</span>
         </label>
-        <input
-          type="password"
+        <SecretKeyInput
           v-model="formData.VITE_DEEPSEEK_API_KEY"
+          :saved-value="savedConfig.VITE_DEEPSEEK_API_KEY"
           placeholder="sk-..."
-          class="input input-bordered w-full focus:input-primary"
-          :class="{
-            'input-error':
-              testResult.deepseek.error && !testResult.deepseek.success,
-          }"
+          :busy="isTesting.deepseek"
+          test-label="Test DeepSeek Key"
+          :test-passed="testPassedState(testResult.deepseek)"
+          :has-error="
+            Boolean(testResult.deepseek.error) && !testResult.deepseek.success
+          "
+          @test="$emit('test-deepseek')"
         />
       </div>
 
@@ -441,22 +391,6 @@
           }"
         />
       </div>
-
-      <button
-        @click="$emit('test-deepseek')"
-        class="btn btn-secondary w-full"
-        :disabled="
-          isTesting.deepseek ||
-          !formData.VITE_DEEPSEEK_API_KEY.trim() ||
-          !formData.deepseekBaseUrl.trim()
-        "
-      >
-        <span
-          v-if="isTesting.deepseek"
-          class="loading loading-spinner loading-xs mr-2"
-        ></span>
-        Test DeepSeek Key
-      </button>
 
       <TestResult :result="testResult.deepseek" />
 
@@ -796,11 +730,18 @@
 
 <script setup lang="ts">
 import TestResult from '../TestResult.vue'
+import SecretKeyInput from '../../common/SecretKeyInput.vue'
 
 defineProps<{
   formData: any
   testResult: any
   isTesting: any
+  /**
+   * Snapshot of the provider credentials that were already saved in secure
+   * storage when the wizard opened. Used to render masked "saved key" views
+   * instead of re-asking for the API key.
+   */
+  savedConfig: Record<string, string>
 }>()
 
 defineEmits<{
@@ -814,4 +755,13 @@ defineEmits<{
   'test-lmstudio': []
   'reset-tests': []
 }>()
+
+function testPassedState(result: {
+  success: boolean
+  error: string
+}): boolean | null {
+  if (result.success) return true
+  if (result.error) return false
+  return null
+}
 </script>

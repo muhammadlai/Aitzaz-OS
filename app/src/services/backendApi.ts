@@ -265,13 +265,15 @@ export class BackendApi {
    */
   async synthesizeSpeech(
     text: string,
-    voice?: string
+    voice?: string,
+    speed?: number
   ): Promise<SynthesisResult> {
     const response = await this.client.post<ApiResponse<SynthesisResult>>(
       '/api/tts/synthesize',
       {
         text,
         voice,
+        speed,
       }
     )
 

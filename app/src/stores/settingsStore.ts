@@ -67,6 +67,9 @@ export interface AliceSettings {
   SUMMARIZATION_MODEL: string
   SUMMARIZATION_SYSTEM_PROMPT: string
   ttsProvider: 'openai' | 'google' | 'local'
+  voiceResponseEnabled: boolean
+  ttsSpeed: number
+  ttsVolume: number
   ttsVoice:
     | 'alloy'
     | 'ash'
@@ -184,6 +187,9 @@ const defaultSettings: AliceSettings = {
   SUMMARIZATION_MODEL: 'gpt-5.6-luna',
   SUMMARIZATION_SYSTEM_PROMPT: DEFAULT_SUMMARIZATION_SYSTEM_PROMPT,
   ttsProvider: 'openai',
+  voiceResponseEnabled: true,
+  ttsSpeed: 1.0,
+  ttsVolume: 1.0,
   ttsVoice: 'nova',
   googleTtsVoice: 'en-US-Journey-F',
   localTtsVoice: 'en_US-amy-medium',
@@ -252,6 +258,9 @@ const settingKeyToLabelMap: Record<keyof AliceSettings, string> = {
   SUMMARIZATION_MODEL: 'Summarization Model',
   SUMMARIZATION_SYSTEM_PROMPT: 'Summarization System Prompt',
   ttsProvider: 'Text-to-Speech Provider',
+  voiceResponseEnabled: 'Voice Response (Automatic Speech)',
+  ttsSpeed: 'Speech Speed',
+  ttsVolume: 'Speech Volume',
   ttsVoice: 'OpenAI TTS Voice',
   googleTtsVoice: 'Google TTS Voice',
   localTtsVoice: 'Local TTS Voice',
@@ -424,6 +433,75 @@ export const useSettingsStore = defineStore('settings', () => {
         validated.localSttModel = validModelIds[1] || 'whisper-base'
       }
     }
+
+    if (typeof validated.voiceResponseEnabled !== 'boolean') {
+      validated.voiceResponseEnabled =
+        defaultSettings.voiceResponseEnabled
+      migrated = true
+    }
+
+    // Zero-config free mode: without an OpenAI key, cloud OpenAI voice/STT/
+    // embeddings can never work, so silently move them to the bundled local
+    // backend. This makes voice work out-of-the-box for OpenRouter/local AI
+    // providers without asking the user for anything extra.
+    const hasOpenAIKeyForVoice = Boolean(validated.VITE_OPENAI_API_KEY?.trim())
+    if (!hasOpenAIKeyForVoice && validated.aiProvider !== 'openai') {
+      if (validated.ttsProvider === 'openai') {
+        validated.ttsProvider = 'local'
+        migrated = true
+      }
+      if (validated.sttProvider === 'openai') {
+        validated.sttProvider = 'local'
+        migrated = true
+      }
+      if (validated.embeddingProvider === 'openai') {
+        validated.embeddingProvider = 'local'
+        migrated = true
+      }
+    }
+
+    // Auto-select a free model for OpenRouter when the current model would
+    // require paid credits the user may not have (or is empty).
+    const FREE_OPENROUTER_DEFAULTS = [
+      'deepseek/deepseek-chat-v3-0324:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'google/gemini-2.0-flash-exp:free',
+    ]
+    if (
+      validated.aiProvider === 'openrouter' &&
+      (!validated.assistantModel?.trim() ||
+        (!validated.assistantModel.includes(':free') &&
+          !hasOpenAIKeyForVoice))
+    ) {
+      validated.assistantModel = FREE_OPENROUTER_DEFAULTS[0]
+      migrated = true
+    }
+    if (
+      validated.aiProvider === 'openrouter' &&
+      (!validated.SUMMARIZATION_MODEL?.trim() ||
+        validated.SUMMARIZATION_MODEL.startsWith('gpt-'))
+    ) {
+      validated.SUMMARIZATION_MODEL = FREE_OPENROUTER_DEFAULTS[0]
+      migrated = true
+    }
+
+    const clampNumeric = (value: unknown, min: number, max: number, fallback: number) => {
+      const numeric = Number(value)
+      if (!Number.isFinite(numeric)) return fallback
+      return Math.min(max, Math.max(min, numeric))
+    }
+
+    const clampedSpeed = clampNumeric(validated.ttsSpeed, 0.5, 2.0, defaultSettings.ttsSpeed)
+    if (clampedSpeed !== validated.ttsSpeed) {
+      migrated = true
+    }
+    validated.ttsSpeed = clampedSpeed
+
+    const clampedVolume = clampNumeric(validated.ttsVolume, 0, 1, defaultSettings.ttsVolume)
+    if (clampedVolume !== validated.ttsVolume) {
+      migrated = true
+    }
+    validated.ttsVolume = clampedVolume
 
     return { settings: validated, migrated }
   }
@@ -744,7 +822,9 @@ export const useSettingsStore = defineStore('settings', () => {
       key === 'SUMMARIZATION_MESSAGE_COUNT' ||
       key === 'websocketPort' ||
       key === 'ragTopK' ||
-      key === 'ragMaxContextChars'
+      key === 'ragMaxContextChars' ||
+      key === 'ttsSpeed' ||
+      key === 'ttsVolume'
     ) {
       ;(settings.value as any)[key] = Number(value)
     } else if (
@@ -752,6 +832,8 @@ export const useSettingsStore = defineStore('settings', () => {
       Array.isArray(value)
     ) {
       settings.value[key] = value as string[]
+    } else if (key === 'voiceResponseEnabled') {
+      settings.value[key] = Boolean(value)
     } else {
       ;(settings.value as any)[key] = String(value)
     }
@@ -893,6 +975,9 @@ export const useSettingsStore = defineStore('settings', () => {
         SUMMARIZATION_MODEL: settings.value.SUMMARIZATION_MODEL,
         SUMMARIZATION_SYSTEM_PROMPT: settings.value.SUMMARIZATION_SYSTEM_PROMPT,
         ttsProvider: settings.value.ttsProvider,
+        voiceResponseEnabled: settings.value.voiceResponseEnabled,
+        ttsSpeed: settings.value.ttsSpeed,
+        ttsVolume: settings.value.ttsVolume,
         ttsVoice: settings.value.ttsVoice,
         googleTtsVoice: settings.value.googleTtsVoice,
         localTtsVoice: settings.value.localTtsVoice,
@@ -1146,6 +1231,8 @@ export const useSettingsStore = defineStore('settings', () => {
     zaiBaseUrl?: string
     minimaxBaseUrl?: string
     deepseekBaseUrl?: string
+    codexAuthConnected?: boolean
+    codexAccountLabel?: string
     useLocalModels?: boolean
     localSttLanguage?: string
   }) {
@@ -1161,6 +1248,15 @@ export const useSettingsStore = defineStore('settings', () => {
     settings.value.aiProvider = onboardingData.aiProvider
     settings.value.VITE_GROQ_API_KEY = onboardingData.VITE_GROQ_API_KEY
     settings.value.VITE_GOOGLE_API_KEY = onboardingData.VITE_GOOGLE_API_KEY
+
+    // Persist ChatGPT Codex authorization captured during onboarding so the
+    // provider stays connected after the wizard completes.
+    if (onboardingData.codexAuthConnected !== undefined) {
+      settings.value.codexAuthConnected = onboardingData.codexAuthConnected
+    }
+    if (onboardingData.codexAccountLabel !== undefined) {
+      settings.value.codexAccountLabel = onboardingData.codexAccountLabel
+    }
 
     // Set models if provided
     if (onboardingData.assistantModel) {

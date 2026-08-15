@@ -1,4 +1,4 @@
-import { app, safeStorage } from 'electron'
+import { app } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import {
@@ -6,6 +6,10 @@ import {
   mergeSecretSettings,
   splitSecretSettings,
 } from './settingsSecurity'
+import {
+  decryptProtected,
+  encryptProtected,
+} from './protectedStorage'
 
 const SETTINGS_FILE_NAME = 'alice-settings.json'
 const SECRETS_FILE_NAME = 'alice-secrets.bin'
@@ -67,6 +71,9 @@ export interface AppSettings {
   SUMMARIZATION_MODEL?: string
   SUMMARIZATION_SYSTEM_PROMPT?: string
   ttsProvider?: 'openai' | 'local'
+  voiceResponseEnabled?: boolean
+  ttsSpeed?: number
+  ttsVolume?: number
   ttsVoice?:
     | 'alloy'
     | 'ash'
@@ -241,27 +248,19 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function requireProtectedStorage(): void {
-  if (!safeStorage.isEncryptionAvailable()) {
-    throw new Error(
-      'Protected secret storage is unavailable. Unlock the system keychain and try again.'
-    )
-  }
-}
-
 async function saveEncryptedSecrets(
   secrets: Record<string, unknown>
 ): Promise<void> {
-  requireProtectedStorage()
-  const encrypted = safeStorage.encryptString(JSON.stringify(secrets))
+  // Uses the OS keychain when available, otherwise a local AES-256-GCM
+  // fallback so credentials always persist (no more re-entering keys).
+  const encrypted = await encryptProtected(JSON.stringify(secrets))
   await writePrivateFile(secretsFilePath, encrypted)
   protectedSecretsLoadFailed = false
 }
 
 async function loadEncryptedSecrets(): Promise<Record<string, unknown>> {
-  requireProtectedStorage()
   const encrypted = await fs.readFile(secretsFilePath)
-  const decrypted = safeStorage.decryptString(encrypted)
+  const decrypted = await decryptProtected(encrypted)
   const parsed = JSON.parse(decrypted) as unknown
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {

@@ -1,6 +1,6 @@
 {
   "name": "aitzaz-ai-pro",
-  "version": "1.0.0",
+  "version": "1.1.8",
   "main": "dist-electron/main/index.js",
   "description": "Aitzaz AI Pro — desktop AI companion (based on the open-source Alice project https://github.com/pmbstyle/Alice, integrated with Aitzaz-OS).",
   "author": {
@@ -50,6 +50,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/node-cron": "^3.0.11",
     "@vitejs/plugin-vue": "^5.0.4",
+    "@vue/test-utils": "^2.4.11",
     "autoprefixer": "^10.5.0",
     "axios": "^1.19.0",
     "cross-env": "^10.1.0",
@@ -57,6 +58,7 @@
     "dotenv": "^17.4.2",
     "electron": "43.2.0",
     "electron-builder": "26.15.3",
+    "happy-dom": "^20.11.2",
     "openai": "^7.4.0",
     "pinia": "^3.0.3",
     "postcss": "^8.5.25",
@@ -73,8 +75,8 @@
   },
   "dependencies": {
     "@ricky0123/vad-web": "0.0.30",
-    "brace-expansion": "2.1.4",
     "better-sqlite3": "^12.11.1",
+    "brace-expansion": "2.1.4",
     "bufferutil": "^4.1.0",
     "cheerio": "^1.0.0-rc.12",
     "dompurify": "^3.4.12",
@@ -89,8 +91,8 @@
     "node-cron": "^4.2.1",
     "onnxruntime-web": "1.27.0",
     "path": "^0.12.7",
-    "picomatch": "4.0.4",
     "pdfjs-dist": "^5.7.284",
+    "picomatch": "4.0.4",
     "turndown": "^7.2.4",
     "vue-router": "^5.0.6",
     "ws": "^8.21.1"

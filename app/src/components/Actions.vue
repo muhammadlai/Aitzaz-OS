@@ -3,19 +3,19 @@
     <div class="pb-2 rounded-lg flex items-center justify-center gap-8">
       <img
         :src="micIconSrc"
-        class="indicator"
+        class="indicator tooltip"
         :class="{ mini: isMinimized }"
         @click="!isConfigState ? emit('toggleRecording') : null"
-        data-tip="Toggle Microphone"
+        :data-tip="micTooltip"
         :aria-label="micAriaLabel"
       />
       <img
         :src="props.isTTSEnabled ? speakerIcon : speakerIconInactive"
-        class="indicator"
-        :class="{ mini: isMinimized }"
+        class="indicator tooltip"
+        :class="{ mini: isMinimized, 'speaker-speaking': isSpeaking }"
         @click="!isConfigState ? emit('togglePlaying') : null"
-        data-tip="Toggle Speech Output"
-        aria-label="Toggle Speech Output"
+        :data-tip="speakerTooltip"
+        :aria-label="speakerTooltip"
       />
       <img
         v-if="!isMinimized"
@@ -102,12 +102,18 @@
         </button>
         <ul
           tabindex="0"
-          class="dropdown-content menu bg-base-200 bg-opacity-80 rounded-box z-[1] w-36 p-2 shadow"
+          class="dropdown-content menu bg-base-200 bg-opacity-80 rounded-box z-[1] w-44 p-2 shadow"
         >
+          <li v-if="signedInEmail" class="menu-title truncate" :title="signedInEmail">
+            {{ signedInEmail }}
+          </li>
           <li>
             <a @click="!isConfigState ? openSettingsWindow() : null"
               >Settings</a
             >
+          </li>
+          <li v-if="signedInEmail">
+            <a @click="!isConfigState ? signOut() : null">Sign out</a>
           </li>
           <li><a @click="closeWindow">Close app</a></li>
         </ul>
@@ -119,6 +125,7 @@
 <script setup lang="ts">
 import { computed, defineProps, nextTick, ref, watch, onMounted } from 'vue'
 import { useGeneralStore, AudioState } from '../stores/generalStore'
+import { useAuthStore } from '../stores/authStore'
 import { storeToRefs } from 'pinia'
 import {
   micIcon,
@@ -150,6 +157,7 @@ const props = defineProps({
 const emit = defineEmits(['takeScreenShot', 'togglePlaying', 'toggleRecording'])
 
 const generalStore = useGeneralStore()
+const authStore = useAuthStore()
 const {
   isMinimized,
   statusMessage,
@@ -159,6 +167,21 @@ const {
   isRecordingRequested,
   audioState: storeAudioState,
 } = storeToRefs(generalStore)
+
+const signedInEmail = computed(() =>
+  authStore.isAuthenticated && authStore.user
+    ? authStore.user.email
+    : ''
+)
+
+const signOut = async () => {
+  try {
+    generalStore.stopPlaybackAndClearQueue()
+    await authStore.logout()
+  } catch (error) {
+    console.error('Failed to sign out:', error)
+  }
+}
 
 const statusMessageId = ref(
   `status-msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
@@ -220,6 +243,32 @@ const micAriaLabel = computed(() => {
   return isRecordingRequested.value
     ? 'Stop Microphone'
     : 'Start Microphone'
+})
+
+const micTooltip = computed(() => {
+  return isRecordingRequested.value
+    ? '🎙 Listening — click to mute mic'
+    : '🎙 Mic off — click to talk'
+})
+
+const isSpeaking = computed(() => props.audioState === 'SPEAKING')
+
+const speakerTooltip = computed(() => {
+  if (!props.isTTSEnabled) {
+    return '🔇 Voice responses off — click to enable'
+  }
+  switch (props.audioState) {
+    case 'SPEAKING':
+      return '🔊 Speaking — click to mute voice'
+    case 'WAITING_FOR_RESPONSE':
+    case 'PROCESSING_AUDIO':
+    case 'GENERATING_IMAGE':
+      return '🧠 Thinking — voice will play automatically'
+    case 'LISTENING':
+      return '🎙 Listening — voice responses on'
+    default:
+      return '🔊 Voice responses on — click to mute voice'
+  }
 })
 
 const closeWindow = () => {
@@ -294,3 +343,22 @@ onMounted(() => {
   calculateScrollDuration()
 })
 </script>
+
+<style scoped>
+.speaker-speaking {
+  animation: speaker-pulse 1.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(34, 197, 94, 0.9));
+}
+
+@keyframes speaker-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+</style>

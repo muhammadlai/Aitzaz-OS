@@ -1,6 +1,10 @@
 // Renderer IPC policy. Keep this file free of Electron imports so it can be
 // unit-tested without starting an Electron process.
 export const INVOKE_CHANNELS = new Set([
+  'auth:sign-up',
+  'auth:login',
+  'auth:logout',
+  'auth:session',
   'thoughtVector:add',
   'thoughtVector:delete-all',
   'thoughtVector:search',
@@ -90,6 +94,7 @@ export const SEND_CHANNELS = new Set([
 ])
 
 export const EVENT_CHANNELS = new Set([
+  'auth:session-changed',
   'main-process-message',
   'overlay-shown',
   'overlay-closed',

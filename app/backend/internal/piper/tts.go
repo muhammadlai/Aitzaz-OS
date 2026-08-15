@@ -357,6 +357,27 @@ func (s *TTSService) GetInfo() *ServiceInfo {
 }
 
 func (s *TTSService) Synthesize(ctx context.Context, text string, voice string) ([]byte, error) {
+	// A zero speed means "use the service default".
+	return s.SynthesizeWithSpeed(ctx, text, voice, 0)
+}
+
+// SynthesizeWithSpeed renders speech with a per-request speaking rate.
+// speed <= 0 falls back to the configured service default.
+func (s *TTSService) SynthesizeWithSpeed(ctx context.Context, text string, voice string, speed float32) ([]byte, error) {
+	if speed <= 0 {
+		speed = s.config.Speed
+	}
+	if speed <= 0 {
+		speed = 1.0
+	}
+	// Keep the rate inside Piper's sensible range.
+	if speed < 0.25 {
+		speed = 0.25
+	}
+	if speed > 4.0 {
+		speed = 4.0
+	}
+
 	if !s.IsReady() {
 		return nil, fmt.Errorf("TTS service is not ready")
 	}
@@ -405,7 +426,7 @@ func (s *TTSService) Synthesize(ctx context.Context, text string, voice string) 
 		return s.generatePlaceholderWAV(text, selectedVoice), nil
 	}
 
-	audioData, err := s.synthesizeWithPiper(ctx, text, voice)
+	audioData, err := s.synthesizeWithPiper(ctx, text, voice, speed)
 	if err != nil {
 		log.Printf("Failed to synthesize with Piper: %v", err)
 		return s.generatePlaceholderWAV(text, selectedVoice), nil
@@ -662,7 +683,7 @@ func (s *TTSService) ensureVoiceModel(ctx context.Context, voice string) error {
 	return nil
 }
 
-func (s *TTSService) synthesizeWithPiper(ctx context.Context, text, voice string) ([]byte, error) {
+func (s *TTSService) synthesizeWithPiper(ctx context.Context, text, voice string, speed float32) ([]byte, error) {
 	modelDir := "models/piper"
 	if s.config.ModelPath != "" {
 		modelDir = s.config.ModelPath
@@ -686,8 +707,8 @@ func (s *TTSService) synthesizeWithPiper(ctx context.Context, text, voice string
 		"--output-file", outputFile,
 	}
 
-	if s.config.Speed > 0 && s.config.Speed != 1.0 {
-		args = append(args, "--length_scale", fmt.Sprintf("%.2f", 1.0/s.config.Speed))
+	if speed > 0 && speed != 1.0 {
+		args = append(args, "--length_scale", fmt.Sprintf("%.2f", 1.0/speed))
 	}
 
 	cmd := exec.CommandContext(ctx, s.config.PiperPath, args...)

@@ -42,6 +42,7 @@ import {
 } from './hotkeyManager'
 import { initializeUpdater, checkForUpdates } from './updaterManager'
 import { registerAuthIPCHandlers, stopAuthServer } from './authManager'
+import { registerUserAuthIPCHandlers } from './userAuthManager'
 import {
   registerCodexIPCHandlers,
   stopCodexAppServer,
@@ -151,6 +152,7 @@ function initializeManagers(): void {
   registerIPCHandlers()
   registerGoogleIPCHandlers()
   registerAuthIPCHandlers()
+  registerUserAuthIPCHandlers()
   registerCodexIPCHandlers()
   console.log(`[Main Index ${initId}] Managers initialization complete.`)
 }

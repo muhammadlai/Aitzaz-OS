@@ -364,7 +364,7 @@ export const useConversationStore = defineStore('conversation', () => {
       await fetchModels()
     }
     isInitialized.value = true
-    generalStore.statusMessage = 'Stand by'
+    generalStore.statusMessage = '💤 Idle'
     generalStore.chatHistory = []
     currentResponseId.value = null
     currentConversationTurnId.value = `turn-${Date.now()}`

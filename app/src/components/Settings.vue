@@ -73,6 +73,7 @@
           v-if="activeTab === 'core'"
           :current-settings="currentSettings"
           @update:setting="updateCurrentSetting"
+          @test-connection="handleSaveAndTestSettings"
         />
 
         <AssistantSettingsTab
@@ -278,16 +279,33 @@ const availableModelsForSelect = computed(() => {
   const staticModels = getStaticModelsForProvider(
     currentSettings.value.aiProvider
   )
+  let models: { id: string }[]
   if (staticModels.length > 0) {
     const staticModelIds = new Set(staticModels.map(model => model.id))
-    return [
+    models = [
       ...staticModels.map((model: ProviderModelDefinition) => ({
         id: model.id,
       })),
       ...availableModels.value.filter(model => !staticModelIds.has(model.id)),
     ]
+  } else {
+    models = [...availableModels.value]
   }
-  return availableModels.value
+
+  // Always surface the currently saved models even if the remote list could
+  // not be fetched (e.g. OpenRouter free accounts, offline). Otherwise the
+  // select renders blank because the saved value has no matching option.
+  const modelIds = new Set(models.map(model => model.id))
+  for (const saved of [
+    currentSettings.value.assistantModel,
+    currentSettings.value.SUMMARIZATION_MODEL,
+  ]) {
+    if (saved && !modelIds.has(saved)) {
+      models.unshift({ id: saved })
+      modelIds.add(saved)
+    }
+  }
+  return models
 })
 
 const toolDependencies: Record<string, string[]> = {
@@ -423,8 +441,11 @@ onMounted(async () => {
   }
   currentSettings.value = { ...settings.value }
 
+  // Fetch models for ANY configured provider (OpenRouter, DeepSeek, local,
+  // ...), not only when an OpenAI key is present — otherwise the model
+  // dropdowns render empty for key-free/alternative providers.
   if (
-    settingsStore.coreOpenAISettingsValid &&
+    settingsStore.areCoreApiKeysSufficientForTesting &&
     conversationStore.availableModels.length === 0
   ) {
     await conversationStore.fetchModels()

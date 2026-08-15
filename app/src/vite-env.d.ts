@@ -23,6 +23,7 @@ declare global {
   interface Window {
     aliceIPC: AliceIPC
     desktopAPI: AliceDesktopAPI
+    authAPI?: AliceAuthAPI
     electron: {
       resize: (dimensions: { width: number; height: number }) => void
       mini: (minimize: { minimize: boolean }) => void
@@ -66,6 +67,32 @@ declare global {
     customToolsAPI?: AliceCustomToolsAPI
     customAvatarsAPI?: AliceCustomAvatarsAPI
   }
+}
+
+interface AliceAuthUser {
+  email: string
+  name: string
+}
+
+interface AliceAuthAPI {
+  signUp: (payload: {
+    email: string
+    password: string
+    name?: string
+    remember?: boolean
+  }) => Promise<{ success: boolean; error?: string; user?: AliceAuthUser }>
+  login: (payload: {
+    email: string
+    password: string
+    remember?: boolean
+  }) => Promise<{ success: boolean; error?: string; user?: AliceAuthUser }>
+  logout: () => Promise<{ success: boolean; error?: string }>
+  getSession: () => Promise<{
+    success: boolean
+    active: boolean
+    user?: AliceAuthUser
+    error?: string
+  }>
 }
 
 interface AliceIPC {

@@ -25,6 +25,38 @@ STT/TTS/embeddings backend) · SQLite + HNSW vector store for memory/RAG.
 - 🎭 **Animated avatar** states (standby / speaking / thinking / listening…)
 - 🛡️ **Permissions & approvals** — one-time / session / permanent
 - ⚙️ **Full Settings** system with secure key storage
+- 👤 **Local accounts** — sign up / sign in / sign out with encrypted
+  session persistence across restarts
+- 🔊 **Automatic voice responses** — every reply is spoken automatically,
+  with play/pause, stop, replay, volume and speed controls
+
+## Accounts, sessions & secure keys
+
+Aitzaz AI Pro uses a local account system implemented in the Electron main
+process (no external auth service is required):
+
+- **Sign up / Sign in / Sign out** with email + password before the assistant
+  opens. Passwords are hashed with `scrypt` + per-user salt and are never
+  stored or logged in plain text.
+- **Session persistence:** with "Keep me signed in" enabled, the session token
+  is encrypted with Electron `safeStorage` (Windows DPAPI, macOS Keychain,
+  Linux libsecret/KWallet) and restored automatically on the next launch.
+- **Provider configuration is remembered:** AI provider, model, voice and TTS
+  settings are persisted after setup, so the API key is entered **once**.
+  API keys are stored in the OS credential store via `safeStorage`
+  (`alice-secrets.bin`), never in plain JSON, and are only ever shown masked
+  (`••••••••••••1234`) in the UI.
+
+## Voice output (TTS)
+
+- Responses are spoken automatically (configurable: *Voice Response* ON/OFF in
+  Settings → Core). The speaker icon reflects the state:
+  💤 Idle · 🎙 Listening · 🧠 Thinking · 🔊 Speaking.
+- Playback controls appear while speech plays: **Play/Pause**, **Stop**,
+  **Replay**. Volume and speech speed are adjustable in Settings.
+- The TTS engine is provider-agnostic and fault tolerant: if the configured
+  provider (OpenAI / Google) fails, synthesis automatically falls back to the
+  bundled local Piper voices (Go backend), so the assistant keeps speaking.
 
 ## Getting started (development)
 
