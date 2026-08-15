@@ -1115,44 +1115,67 @@ async function buildGoBackend() {
     goAvailable = false
   }
 
-  const existingBinary = path.join(backendDir, outputName)
-  if (!goAvailable) {
-    if (fs.existsSync(existingBinary)) {
-      console.warn(
-        `⚠️  Go toolchain not found. Reusing existing backend binary: ${existingBinary}`
-      )
-      console.warn(
-        '   Install Go to rebuild the backend from source. Skipping backend compilation.'
-      )
-      return
+  // On Linux, CI runners use a very new glibc (Ubuntu 24.04). Binaries built
+  // there refuse to run on older systems (e.g. Chromebook/Crostini Debian).
+  // Build inside a golang:1.24-bullseye container (glibc 2.31) when docker is
+  // available so the backend runs on practically every Linux desktop.
+  const dockerAvailable = (() => {
+    if (process.env.AITZAZ_NO_DOCKER_GO) return false
+    try {
+      execSync('docker info >/dev/null 2>&1', { stdio: 'ignore', shell: true })
+      return true
+    } catch {
+      return false
     }
+  })()
+
+  const buildStrategies = []
+  if (platform === 'linux' && dockerAvailable) {
+    buildStrategies.push({
+      label: 'docker golang:1.24-bullseye (glibc 2.31 compatible)',
+      cmd: `docker run --rm -v "${process.cwd()}:/app" -w /app/backend golang:1.24-bullseye go build -ldflags="-s -w" -o "/app/resources/backend/${outputName}"`,
+    })
+  }
+  buildStrategies.push({
+    label: 'local Go toolchain',
+    cmd: `cd backend && go build -ldflags="-s -w" -o "${outputPath}"`,
+  })
+
+  const finalPath = path.join(
+    process.cwd(),
+    'resources',
+    'backend',
+    outputName
+  )
+
+  // No way to compile and a binary already exists (renderer-only checkout):
+  // reuse it instead of failing the whole rebuild.
+  if (
+    !goAvailable &&
+    buildStrategies.length === 1 &&
+    fs.existsSync(finalPath)
+  ) {
     console.warn(
-      '⚠️  Go toolchain not found and no existing backend binary present.'
+      `⚠️  No Go toolchain/docker available. Reusing existing backend binary: ${finalPath}`
     )
-    console.warn(
-      '   Attempting the build anyway; it will fail if Go is truly missing.'
-    )
+    return
   }
 
-  // Build command
-  const buildCmd = `cd backend && go build -ldflags="-s -w" -o "${outputPath}"`
-
-  console.log(`Building Go backend for ${platform}...`)
-  console.log(`Command: ${buildCmd}`)
+  for (const strategy of buildStrategies) {
+    console.log(`Building Go backend for ${platform} via: ${strategy.label}`)
+    console.log(`Command: ${strategy.cmd}`)
+    try {
+      execSync(strategy.cmd, { stdio: 'inherit', shell: true })
+      if (fs.existsSync(finalPath)) break
+    } catch (error) {
+      console.warn(
+        `⚠️  Build via "${strategy.label}" failed: ${error.message}`
+      )
+    }
+  }
 
   try {
-    execSync(buildCmd, {
-      stdio: 'inherit',
-      shell: true,
-    })
-
     // Verify the binary was created
-    const finalPath = path.join(
-      process.cwd(),
-      'resources',
-      'backend',
-      outputName
-    )
     if (fs.existsSync(finalPath)) {
       const stats = fs.statSync(finalPath)
       console.log(
