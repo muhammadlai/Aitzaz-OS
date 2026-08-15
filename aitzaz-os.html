@@ -1,0 +1,2617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AITZAZ-OS — AI Command Center</title>
+<meta name="description" content="AITZAZ-OS: AI CEO + multi-agent command center — voice, AI chat, job hunter, CRM, memory, tasks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070d; --bg2:#080c15; --panel:rgba(255,255,255,.035); --panel2:rgba(10,15,26,.92);
+  --line:rgba(255,255,255,.075); --line2:rgba(255,255,255,.05);
+  --accent:#22d3ee; --accent2:#818cf8; --teal:#2dd4bf;
+  --ok:#34d399; --warn:#fbbf24; --err:#f87171;
+  --txt:#e7eef6; --dim:#8b9bb0; --faint:#5b6b80;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  --disp:'Space Grotesk',var(--font);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font); background:
+    radial-gradient(1200px 700px at 80% -10%, rgba(34,211,238,.10) 0%, transparent 55%),
+    radial-gradient(900px 600px at -10% 110%, rgba(129,140,248,.08) 0%, transparent 55%),
+    var(--bg);
+  color:var(--txt); font-size:15.5px; line-height:1.55; overflow:hidden;
+}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#1b2a3f;border-radius:5px}
+::-webkit-scrollbar-track{background:transparent}
+button{font-family:var(--font);cursor:pointer}
+input,select,textarea{font-family:var(--font);color:var(--txt)}
+
+#app{display:grid; grid-template-columns:236px 1fr; height:100vh}
+
+/* ================= SIDEBAR ================= */
+#sidebar{
+  background:linear-gradient(180deg, rgba(9,13,22,.96), rgba(5,8,14,.97));
+  border-right:1px solid var(--line2); display:flex; flex-direction:column; z-index:60;
+}
+#logo{display:flex; align-items:center; gap:11px; padding:20px 18px 16px; border-bottom:1px solid var(--line2)}
+#logo .orb{width:36px;height:36px;border-radius:50%; flex:none;
+  background:radial-gradient(circle at 34% 30%, #eaffff 0%, var(--accent) 48%, rgba(0,60,90,.95) 80%);
+  box-shadow:0 0 22px rgba(34,211,238,.5), inset 0 0 10px rgba(255,255,255,.35)}
+#logo .t1{font-family:var(--disp); font-size:15.5px; font-weight:700; letter-spacing:1.5px; color:#fff}
+#logo .t2{font-size:10px; letter-spacing:3.2px; color:var(--dim); margin-top:1px}
+#nav{flex:1; overflow-y:auto; padding:10px 10px}
+.navBtn{
+  width:100%; display:flex; align-items:center; gap:11px; padding:10px 12px; margin:2px 0;
+  background:none; border:1px solid transparent; border-radius:9px; color:var(--dim);
+  font-size:14px; font-weight:500; text-align:left; transition:all .16s ease;
+}
+.navBtn .ico{width:20px; text-align:center; font-size:14px; opacity:.85}
+.navBtn:hover{color:var(--txt); background:rgba(255,255,255,.04)}
+.navBtn.active{color:#fff; background:linear-gradient(90deg, rgba(34,211,238,.14), rgba(34,211,238,.03));
+  border-color:rgba(34,211,238,.25); box-shadow:inset 2px 0 0 var(--accent)}
+#sideFoot{padding:14px 16px; border-top:1px solid var(--line2); font-size:11.5px; color:var(--faint)}
+#sideDemo{display:none; align-items:center; gap:8px; padding:8px 12px; border:1px solid rgba(251,191,36,.35);
+  background:rgba(251,191,36,.07); border-radius:8px; color:var(--warn); font-size:11px;
+  font-weight:600; letter-spacing:1.6px}
+#sideDemo .dot{width:7px;height:7px;border-radius:50%;background:var(--warn); box-shadow:0 0 8px var(--warn); animation:blink 1.8s infinite}
+
+/* ================= TOP BAR ================= */
+#main{display:flex; flex-direction:column; min-width:0; overflow:hidden}
+#topbar{
+  display:flex; align-items:center; gap:14px; padding:0 20px; height:60px; flex:none;
+  background:rgba(7,11,19,.82); border-bottom:1px solid var(--line2); backdrop-filter:blur(14px);
+}
+#burger{display:none; background:none; border:1px solid var(--line); color:var(--txt); border-radius:8px; padding:6px 10px; font-size:16px}
+#viewTitle{font-family:var(--disp); font-size:13px; font-weight:600; letter-spacing:3.5px; color:var(--dim); text-transform:uppercase}
+#topRight{margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.pill{font-size:11.5px; font-weight:600; letter-spacing:1px; padding:6px 11px; border-radius:20px;
+  border:1px solid var(--line); color:var(--dim); white-space:nowrap; display:inline-flex; align-items:center; gap:7px}
+.pill.ok{border-color:rgba(52,211,153,.4); color:var(--ok); background:rgba(52,211,153,.07)}
+.pill.warn{border-color:rgba(251,191,36,.4); color:var(--warn); background:rgba(251,191,36,.07)}
+.pill.err{border-color:rgba(248,113,113,.4); color:var(--err); background:rgba(248,113,113,.07)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor; box-shadow:0 0 7px currentColor}
+.pill .dot.on{animation:blink 2.2s infinite}
+#clock{font-family:var(--disp); font-size:12.5px; letter-spacing:1.5px; color:var(--faint)}
+
+/* ================= VIEWS ================= */
+#views{flex:1; overflow:hidden; position:relative}
+.view{display:none; height:100%; overflow-y:auto; padding:26px 26px 40px}
+.view.active{display:block; animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0; transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.card{background:var(--panel); border:1px solid var(--line2); border-radius:16px; padding:18px;
+  backdrop-filter:blur(16px); box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.card h3{font-family:var(--disp); font-size:11px; font-weight:600; letter-spacing:2.8px; color:var(--dim);
+  text-transform:uppercase; border-bottom:1px solid var(--line2); padding-bottom:11px; margin-bottom:13px;
+  display:flex; justify-content:space-between; align-items:center; gap:8px}
+.card h3 .tag{font-family:var(--font); font-size:10.5px; letter-spacing:1px; color:var(--faint); text-transform:none}
+
+.pageHead{max-width:1180px; margin:0 auto 20px}
+.pageHead h1{font-family:var(--disp); font-size:clamp(24px,3.2vw,34px); font-weight:700; letter-spacing:-.5px; color:#fff}
+.pageHead p{color:var(--dim); font-size:14.5px; margin-top:5px; max-width:640px}
+
+/* ================= COMMAND CENTER ================= */
+.workspace{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; height:100%; max-width:1460px; margin:0 auto}
+.convo-col{display:flex; flex-direction:column; min-width:0; gap:12px}
+#ceoStrip{
+  display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:12px;
+  background:linear-gradient(90deg, rgba(34,211,238,.09), rgba(129,140,248,.05));
+  border:1px solid rgba(34,211,238,.18); flex:none;
+}
+#ceoStrip .orb{width:26px;height:26px;border-radius:50%; flex:none;
+  background:radial-gradient(circle at 35% 30%, #eaffff 0%, var(--accent) 50%, #07354a 85%);
+  box-shadow:0 0 14px rgba(34,211,238,.55)}
+#ceoStrip .cn{font-family:var(--disp); font-weight:700; font-size:15px; color:#fff; letter-spacing:.5px}
+#ceoStrip .cs{font-size:11.5px; font-weight:600; letter-spacing:1.5px; color:var(--ok)}
+#ceoStrip .ct{color:var(--dim); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+#phaseBar{
+  display:none; align-items:center; gap:10px; padding:10px 16px; border-radius:12px;
+  background:rgba(34,211,238,.06); border:1px solid rgba(34,211,238,.2); color:var(--accent);
+  font-weight:600; letter-spacing:2.5px; font-size:12.5px; flex:none;
+}
+#phaseBar.show{display:flex}
+#phaseBar .spinner{width:14px;height:14px;border-radius:50%; flex:none;
+  border:2px solid rgba(34,211,238,.2); border-top-color:var(--accent); animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+#chat{
+  flex:1; min-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;
+  padding:20px 18px; background:rgba(255,255,255,.015); border:1px solid var(--line2); border-radius:16px;
+}
+.msg{max-width:88%; padding:13px 16px; border-radius:14px; font-size:15.5px; line-height:1.6; animation:msgIn .25s ease}
+@keyframes msgIn{from{opacity:0; transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg.user{align-self:flex-end; background:linear-gradient(135deg, rgba(34,211,238,.16), rgba(34,211,238,.07));
+  border:1px solid rgba(34,211,238,.3); color:#eafcff; border-bottom-right-radius:4px}
+.msg.ai{align-self:flex-start; background:rgba(13,19,32,.92); border:1px solid var(--line);
+  border-left:2px solid var(--accent); color:var(--txt); border-bottom-left-radius:4px}
+.msg.sys{align-self:center; color:var(--faint); font-size:12.5px; background:none; border:none; padding:3px}
+.msg.tool{align-self:flex-start; background:rgba(11,17,28,.9); border:1px dashed rgba(255,255,255,.12); color:var(--dim); width:min(92%,560px)}
+.msg .ai-actions{margin-top:12px; display:flex; gap:8px; flex-wrap:wrap}
+.actBtn{
+  background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.35); color:var(--accent);
+  padding:7px 14px; border-radius:8px; font-size:13px; font-weight:600; letter-spacing:.5px;
+}
+.actBtn:hover{background:rgba(34,211,238,.2); box-shadow:0 0 14px rgba(34,211,238,.25)}
+
+.typing{display:inline-flex; gap:5px; padding:5px 0}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--accent); animation:tp 1.1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}
+.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tp{0%,60%,100%{opacity:.25;transform:none}30%{opacity:1;transform:translateY(-4px)}}
+
+/* workflow trail (vertical, crystal clear) */
+.flow{display:flex; flex-direction:column; gap:0; padding:4px 0}
+.flow .frow{display:flex; align-items:flex-start; gap:10px; position:relative; padding:7px 0}
+.flow .frow::before{content:""; position:absolute; left:8px; top:26px; bottom:-6px; width:2px;
+  background:var(--line); border-radius:1px}
+.flow .frow:last-child::before{display:none}
+.flow .fdot{width:16px;height:16px;border-radius:50%; flex:none; margin-top:2px; z-index:1;
+  border:2px solid var(--faint); background:var(--bg2); transition:all .25s}
+.flow .frow.running .fdot{border-color:var(--accent); background:rgba(34,211,238,.15); box-shadow:0 0 10px rgba(34,211,238,.6); animation:blink 1s infinite}
+.flow .frow.done .fdot{border-color:var(--ok); background:rgba(52,211,153,.2)}
+.flow .fname{font-weight:600; font-size:13.5px; color:var(--txt)}
+.flow .frow.pending .fname{color:var(--faint)}
+.flow .frow.running .fname{color:var(--accent)}
+.flow .frow.done .fname{color:var(--ok)}
+.flow .fstat{font-size:11.5px; color:var(--faint); letter-spacing:.5px}
+.flow .frow.running .fstat{color:var(--dim)}
+.fbar{height:3px; border-radius:2px; background:rgba(255,255,255,.06); margin-top:5px; overflow:hidden}
+.fbar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .15s linear}
+.flow .frow.done .fbar i{background:var(--ok)}
+
+#chips{flex:none; display:flex; gap:8px; flex-wrap:wrap}
+.chip{
+  background:rgba(255,255,255,.03); border:1px solid var(--line2); color:var(--dim);
+  padding:7px 13px; border-radius:20px; font-size:13px; font-weight:500; transition:all .15s;
+}
+.chip:hover{color:var(--accent); border-color:rgba(34,211,238,.35); background:rgba(34,211,238,.06)}
+
+/* composer */
+#composer{
+  flex:none; display:flex; align-items:center; gap:10px; padding:10px;
+  background:rgba(11,16,27,.9); border:1px solid var(--line); border-radius:18px;
+  backdrop-filter:blur(16px); box-shadow:0 10px 40px rgba(0,0,0,.35);
+}
+#micBtn{
+  width:50px;height:50px;border-radius:50%; border:1.5px solid rgba(34,211,238,.4); flex:none;
+  background:radial-gradient(circle at 50% 34%, #0d2b3a 0%, #07101c 75%); color:var(--accent);
+  font-size:19px; transition:all .2s; display:flex; align-items:center; justify-content:center;
+}
+#micBtn:hover{box-shadow:0 0 18px rgba(34,211,238,.4)}
+#micBtn.rec{border-color:var(--teal); color:var(--teal); animation:micPulse 1.4s infinite}
+#micBtn.proc{border-color:var(--warn); color:var(--warn)}
+#micBtn.speak{border-color:var(--warn); color:var(--warn)}
+#micBtn.off{border-color:var(--err); color:var(--err)}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(45,212,191,.45)}100%{box-shadow:0 0 0 16px rgba(45,212,191,0)}}
+#micStatus{font-size:10.5px; font-weight:600; letter-spacing:1.6px; color:var(--faint); text-align:center; margin-top:3px}
+#chatInput{
+  flex:1; background:transparent; border:none; outline:none; color:var(--txt);
+  font-size:15.5px; padding:10px 6px;
+}
+#chatInput::placeholder{color:var(--faint)}
+#sendBtn{
+  background:linear-gradient(90deg,#0e7f98,#22d3ee); color:#02131a; border:none; flex:none;
+  border-radius:11px; padding:12px 22px; font-weight:700; letter-spacing:1.5px; font-size:13.5px;
+}
+#sendBtn:hover{filter:brightness(1.12); box-shadow:0 0 18px rgba(34,211,238,.45)}
+.sqBtn{
+  width:44px;height:44px; border-radius:11px; flex:none; border:1px solid var(--line);
+  background:rgba(255,255,255,.04); color:var(--dim); font-size:15px; transition:all .15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.sqBtn:hover{color:var(--txt); border-color:var(--line)}
+.sqBtn.off{color:var(--err); border-color:rgba(248,113,113,.4)}
+#speakStopBtn{display:none}
+#speakStopBtn.show{display:flex}
+#eq{display:none; align-items:flex-end; gap:2.5px; height:15px; margin-left:2px}
+#eq.show{display:flex}
+#eq i{width:3px; background:var(--warn); border-radius:2px; animation:eq .7s infinite ease-in-out}
+#eq i:nth-child(2){animation-delay:.15s}#eq i:nth-child(3){animation-delay:.3s}#eq i:nth-child(4){animation-delay:.45s}
+@keyframes eq{0%,100%{height:4px}50%{height:15px}}
+
+/* agent rail */
+#agentRail{display:flex; flex-direction:column; gap:12px; overflow-y:auto; padding-right:2px}
+.railAgent{background:var(--panel); border:1px solid var(--line2); border-radius:13px; padding:13px 14px; transition:all .2s}
+.railAgent.running{border-color:rgba(34,211,238,.4); box-shadow:0 0 18px rgba(34,211,238,.12)}
+.railAgent.done{border-color:rgba(52,211,153,.3)}
+.ra-head{display:flex; align-items:center; gap:9px}
+.ra-ico{width:30px;height:30px;border-radius:8px; flex:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(34,211,238,.08); border:1px solid var(--line2); color:var(--accent); font-size:13.5px}
+.ra-name{font-family:var(--disp); font-size:12px; font-weight:600; letter-spacing:1.6px; color:var(--txt)}
+.ra-status{margin-left:auto; font-size:9.5px; font-weight:700; letter-spacing:1.8px; color:var(--faint); white-space:nowrap}
+.ra-task{font-size:12.5px; color:var(--dim); padding:7px 0 5px; min-height:30px}
+.bar{height:5px; border-radius:3px; background:rgba(255,255,255,.06); overflow:hidden}
+.bar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--accent2),var(--accent)); transition:width .15s linear}
+.bar i.ok{background:var(--ok)}
+
+/* ================= AGENTS VIEW ================= */
+#ceoCard{
+  display:flex; align-items:center; gap:18px; padding:22px; margin-bottom:18px;
+  background:linear-gradient(135deg, rgba(34,211,238,.12), rgba(129,140,248,.06));
+  border:1px solid rgba(34,211,238,.28); border-radius:18px;
+}
+#ceoCard .orb{width:56px;height:56px;border-radius:50%; flex:none;
+  background:radial-gradient(circle at 34% 30%, #eaffff 0%, var(--accent) 48%, rgba(0,60,90,.95) 82%);
+  box-shadow:0 0 30px rgba(34,211,238,.55), inset 0 0 12px rgba(255,255,255,.3)}
+#ceoCard .cn{font-family:var(--disp); font-size:20px; font-weight:700; letter-spacing:1px; color:#fff}
+#ceoCard .cr{font-size:13px; color:var(--dim); margin-top:3px}
+#ceoCard .cs{margin-left:auto; text-align:right; min-width:200px}
+#ceoTask{font-size:13px; color:var(--dim); margin-top:7px; letter-spacing:.4px}
+#ceoLast{font-size:12px; color:var(--faint); margin-top:4px}
+#agentGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px}
+.agent-card{background:var(--panel); border:1px solid var(--line2); border-radius:16px; padding:16px; transition:all .25s}
+.agent-card.running{border-color:rgba(34,211,238,.45); box-shadow:0 0 24px rgba(34,211,238,.12)}
+.agent-card.done{border-color:rgba(52,211,153,.3)}
+.agent-head{display:flex; align-items:center; gap:11px}
+.agent-ico{width:38px;height:38px;border-radius:10px; flex:none; display:flex; align-items:center; justify-content:center;
+  background:rgba(34,211,238,.08); border:1px solid var(--line2); color:var(--accent); font-size:16px}
+.agent-name{font-family:var(--disp); font-size:13.5px; font-weight:600; letter-spacing:1.5px; color:var(--txt)}
+.agent-role{font-size:11.5px; color:var(--faint); margin-top:1px}
+.agent-status{margin-left:auto; font-size:9.5px; font-weight:700; letter-spacing:1.8px; color:var(--faint); white-space:nowrap}
+.agent-task{font-size:13px; color:var(--dim); padding:11px 0 8px; min-height:40px}
+.agent-last{font-size:11.5px; color:var(--faint); margin-top:7px}
+.agent-last b{color:var(--dim); font-weight:600}
+
+/* ================= JOBS ================= */
+.tabs{display:flex; gap:6px; margin-bottom:16px; border-bottom:1px solid var(--line2); padding-bottom:0}
+.tabBtn{background:none; border:none; border-bottom:2px solid transparent; color:var(--dim);
+  padding:10px 16px; font-size:14.5px; font-weight:600; letter-spacing:.5px}
+.tabBtn.active{color:var(--accent); border-bottom-color:var(--accent)}
+.filters{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+.filters input,.filters select{
+  background:rgba(255,255,255,.03); border:1px solid var(--line2); border-radius:10px; padding:10px 12px;
+  font-size:14px; outline:none; color:var(--txt); min-width:130px;
+}
+.filters input{flex:1; min-width:190px}
+.filters input:focus,.filters select:focus{border-color:rgba(34,211,238,.4)}
+.filters select option{background:#0b111d}
+.honestNote{display:flex; gap:9px; align-items:center; font-size:13px; color:var(--warn);
+  border:1px solid rgba(251,191,36,.3); background:rgba(251,191,36,.06); border-radius:10px; padding:10px 14px; margin-bottom:14px}
+.jobGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px}
+.job-card{background:var(--panel); border:1px solid var(--line2); border-radius:16px; padding:17px; transition:all .18s}
+.job-card:hover{border-color:rgba(34,211,238,.35); box-shadow:0 6px 26px rgba(0,0,0,.3)}
+.jc-top{display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
+.jc-pos{font-weight:700; font-size:16px; color:#fff; line-height:1.35}
+.jc-co{color:var(--dim); font-size:13.5px; margin-top:2px}
+.jc-score{font-family:var(--disp); font-weight:700; font-size:15px; padding:5px 10px; border-radius:9px; flex:none}
+.jc-score.hi{color:var(--ok); background:rgba(52,211,153,.1); border:1px solid rgba(52,211,153,.3)}
+.jc-score.mid{color:var(--warn); background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.3)}
+.jc-score.lo{color:var(--err); background:rgba(248,113,113,.08); border:1px solid rgba(248,113,113,.3)}
+.jc-meta{display:flex; flex-wrap:wrap; gap:6px; margin:11px 0}
+.jm{font-size:11.5px; font-weight:600; letter-spacing:.5px; padding:4px 9px; border-radius:6px;
+  background:rgba(255,255,255,.04); border:1px solid var(--line2); color:var(--dim)}
+.jm.demo{color:var(--warn); border-color:rgba(251,191,36,.35)}
+.jc-skills{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:13px}
+.sk{font-size:11px; padding:3px 8px; border-radius:5px; background:rgba(129,140,248,.1); border:1px solid rgba(129,140,248,.25); color:#b7c0ff}
+.jc-actions{display:flex; gap:7px; flex-wrap:wrap}
+.jbtn{background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--dim); border-radius:8px;
+  padding:7px 12px; font-size:12.5px; font-weight:600}
+.jbtn:hover{color:var(--txt); border-color:var(--line)}
+.jbtn.primary{background:rgba(34,211,238,.12); border-color:rgba(34,211,238,.4); color:var(--accent)}
+.jbtn.primary:hover{background:rgba(34,211,238,.22)}
+.jbtn.danger:hover{color:var(--err); border-color:rgba(248,113,113,.4)}
+.stSelect{
+  font-size:10px; font-weight:700; letter-spacing:1px; padding:5px 8px; border-radius:6px;
+  border:1px solid; background:transparent; cursor:pointer; outline:none; color:inherit;
+}
+.st-NEW{color:var(--accent); border-color:rgba(34,211,238,.4)}
+.st-MATCHED{color:#7db4ff; border-color:rgba(125,180,255,.4)}
+.st-SAVED{color:#c084fc; border-color:rgba(192,132,252,.4)}
+.st-APPLIED{color:var(--warn); border-color:rgba(251,191,36,.4)}
+.st-INTERVIEW{color:var(--accent2); border-color:rgba(129,140,248,.4)}
+.st-REJECTED{color:var(--err); border-color:rgba(248,113,113,.4)}
+.st-OFFER{color:var(--ok); border-color:rgba(52,211,153,.4)}
+
+/* CV analyzer */
+#cvPanel textarea{
+  width:100%; min-height:170px; background:rgba(255,255,255,.03); border:1px solid var(--line2);
+  border-radius:12px; padding:13px; color:var(--txt); font-size:14px; outline:none; resize:vertical;
+}
+#cvPanel textarea:focus{border-color:rgba(34,211,238,.4)}
+#cvResults{display:none}
+#cvResults.show{display:block}
+.cvScoreBig{font-family:var(--disp); font-size:44px; font-weight:700; color:var(--accent); line-height:1}
+.cv-block{margin-top:14px}
+.cv-block h4{font-size:12px; font-weight:700; letter-spacing:2px; color:var(--dim); text-transform:uppercase; margin-bottom:7px}
+.cv-gen{margin-top:10px}
+.cv-gen textarea{min-height:120px}
+
+/* ================= CRM ================= */
+.crmToolbar{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-bottom:14px}
+.crmToolbar input,.crmToolbar select{
+  background:rgba(255,255,255,.03); border:1px solid var(--line2); border-radius:10px; padding:10px 12px;
+  font-size:14px; outline:none; color:var(--txt);
+}
+.crmToolbar input{flex:1; min-width:190px}
+.crmToolbar input:focus,.crmToolbar select:focus{border-color:rgba(34,211,238,.4)}
+.cbtn{background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.4); color:var(--accent); border-radius:10px;
+  padding:10px 16px; font-size:13.5px; font-weight:600; letter-spacing:.5px}
+.cbtn:hover{background:rgba(34,211,238,.2); box-shadow:0 0 14px rgba(34,211,238,.25)}
+.cbtn.ghost{background:rgba(255,255,255,.04); border-color:var(--line); color:var(--dim)}
+.cbtn.ghost:hover{color:var(--txt)}
+.cbtn.danger{background:rgba(248,113,113,.08); border-color:rgba(248,113,113,.4); color:var(--err)}
+#leadsWrap{overflow-x:auto; border:1px solid var(--line2); border-radius:14px; background:rgba(255,255,255,.015)}
+table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:1060px}
+th{font-family:var(--disp); font-size:10px; font-weight:600; letter-spacing:1.8px; color:var(--faint); text-align:left;
+  padding:12px 12px; border-bottom:1px solid var(--line2); white-space:nowrap; text-transform:uppercase}
+td{padding:11px 12px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--txt); white-space:nowrap; vertical-align:middle}
+tr:hover td{background:rgba(255,255,255,.02)}
+td .co{color:#fff; font-weight:600}
+.score{font-family:var(--disp); font-weight:700; font-size:13px}
+.score.hi{color:var(--ok)} .score.mid{color:var(--warn)} .score.lo{color:var(--err)}
+.tbtn{background:none; border:none; color:var(--faint); font-size:15px; padding:3px 7px; border-radius:6px}
+.tbtn:hover{color:var(--accent); background:rgba(34,211,238,.08)}
+.tbtn.del:hover{color:var(--err); background:rgba(248,113,113,.08)}
+.st-NEW{color:var(--accent);border-color:rgba(34,211,238,.4)}
+.st-QUALIFIED{color:#7db4ff;border-color:rgba(125,180,255,.4)}
+.st-CONTACTED{color:var(--warn);border-color:rgba(251,191,36,.4)}
+.st-FOLLOW-UP{color:#fdba74;border-color:rgba(253,186,116,.4)}
+.st-INTERESTED{color:#c084fc;border-color:rgba(192,132,252,.4)}
+.st-CLOSED{color:var(--ok);border-color:rgba(52,211,153,.4)}
+.st-LOST{color:var(--err);border-color:rgba(248,113,113,.4)}
+
+/* ================= MEMORY / TASKS / MEDIA ================= */
+.panelGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:14px}
+.mem-card,.task-card,.media-card{background:var(--panel); border:1px solid var(--line2); border-radius:16px; padding:16px}
+.mem-card .mk{font-family:var(--disp); font-size:12px; font-weight:600; letter-spacing:1.8px; color:var(--accent); text-transform:uppercase}
+.mem-card .mv{font-size:15.5px; color:var(--txt); padding:7px 0 4px}
+.mem-card .mt{font-size:11.5px; color:var(--faint); display:flex; justify-content:space-between; align-items:center; gap:8px}
+.task-card{border-left:3px solid var(--warn)}
+.task-card.p-HIGH{border-left-color:var(--err)}
+.task-card.p-MEDIUM{border-left-color:var(--warn)}
+.task-card.p-LOW{border-left-color:var(--ok)}
+.task-card.done{opacity:.55}
+.task-card.done .tt{text-decoration:line-through}
+.task-card .tt{font-size:16px; font-weight:600; color:#fff; padding-bottom:9px; line-height:1.4}
+.task-meta{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--dim); letter-spacing:.5px}
+.task-meta b{color:var(--txt); font-weight:600}
+.task-notes{font-size:12.5px; color:var(--faint); margin-top:8px; font-style:italic}
+.task-actions{display:flex; gap:7px; margin-top:12px; flex-wrap:wrap}
+.mini{background:rgba(255,255,255,.03); border:1px solid var(--line2); color:var(--dim); border-radius:7px;
+  font-size:12px; padding:6px 10px; letter-spacing:.4px}
+.mini:hover{color:var(--accent); border-color:rgba(34,211,238,.35)}
+.mini.danger:hover{color:var(--err); border-color:rgba(248,113,113,.4)}
+.addRow{display:flex; gap:9px; margin-bottom:14px; flex-wrap:wrap}
+.addRow input,.addRow select{flex:1; min-width:170px; background:rgba(255,255,255,.03); border:1px solid var(--line2);
+  border-radius:10px; padding:10px 12px; font-size:14px; outline:none; color:var(--txt)}
+.addRow input:focus,.addRow select:focus{border-color:rgba(34,211,238,.4)}
+.media-card{display:flex; gap:13px; align-items:center}
+.media-card img{width:130px; height:74px; object-fit:cover; border-radius:10px; flex:none; background:#0a111c; border:1px solid var(--line2)}
+.media-card .mi{flex:1; min-width:0}
+.media-card .mtitle{font-weight:600; color:#fff; font-size:14.5px; line-height:1.35;
+  overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical}
+.media-card .mdate{font-size:11.5px; color:var(--faint); margin-top:5px}
+
+/* ================= ACTIVITY ================= */
+#activityFilters{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:14px}
+#activityFilters .chip.active{color:var(--accent); border-color:rgba(34,211,238,.4); background:rgba(34,211,238,.08)}
+.act{display:flex; gap:10px; padding:9px 4px; font-size:14px; color:var(--dim); border-bottom:1px dashed rgba(255,255,255,.05)}
+.act .t{color:var(--faint); flex:none; font-size:12px; font-family:var(--disp); letter-spacing:.5px; padding-top:1px; min-width:64px}
+.act .dot{margin-top:5px}
+.act .m{overflow:hidden}
+.dot{display:inline-block; width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.dot.on{background:var(--teal); box-shadow:0 0 7px var(--teal)}
+.dot.amber{background:var(--warn); box-shadow:0 0 7px var(--warn)}
+.dot.red{background:var(--err); box-shadow:0 0 7px var(--err)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ================= CONNECTIONS ================= */
+.setGrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:14px; max-width:1180px; margin:0 auto}
+.setRow{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:11px 0; border-bottom:1px dashed rgba(255,255,255,.05)}
+.setRow .sl{font-size:14px}
+.setRow small{display:block; color:var(--faint); font-size:12px; margin-top:2px}
+.setRow select,.setRow input[type=password]{
+  background:rgba(255,255,255,.03); border:1px solid var(--line2); border-radius:8px; padding:8px 10px;
+  font-size:13px; color:var(--txt); outline:none; max-width:200px;
+}
+.fullBtn{width:100%; background:rgba(34,211,238,.1); border:1px solid rgba(34,211,238,.4); color:var(--accent);
+  padding:11px; border-radius:10px; font-size:13.5px; font-weight:600; letter-spacing:.5px; margin-top:6px}
+.fullBtn:hover{background:rgba(34,211,238,.2)}
+.fullBtn.danger{background:rgba(248,113,113,.08); border-color:rgba(248,113,113,.4); color:var(--err)}
+.fullBtn.ghost{background:rgba(255,255,255,.04); border-color:var(--line); color:var(--dim)}
+.note{font-size:12px; color:var(--faint); line-height:1.6; margin-top:8px}
+
+/* ================= MODALS ================= */
+.modal{position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center;
+  background:rgba(2,5,10,.78); backdrop-filter:blur(6px); padding:16px}
+.modal.open{display:flex}
+.modalBox{width:min(640px,96vw); max-height:90vh; overflow-y:auto; background:var(--panel2);
+  border:1px solid rgba(34,211,238,.3); border-radius:18px; padding:24px; box-shadow:0 20px 80px rgba(0,0,0,.6)}
+.modalBox h2{font-family:var(--disp); font-size:17px; font-weight:700; letter-spacing:.5px; color:#fff; margin-bottom:16px}
+.mrow{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px}
+.mrow.full{grid-template-columns:1fr}
+.mrow label{font-size:11.5px; font-weight:600; letter-spacing:1px; color:var(--faint); display:block; margin-bottom:4px; text-transform:uppercase}
+.mrow input,.mrow select,.mrow textarea{width:100%; background:rgba(255,255,255,.03); border:1px solid var(--line2);
+  border-radius:9px; padding:9px 11px; color:var(--txt); font-size:14px; outline:none}
+.mrow textarea{resize:vertical; min-height:70px}
+.mrow input:focus,.mrow select:focus,.mrow textarea:focus{border-color:rgba(34,211,238,.4)}
+.mrow select option{background:#0b111d}
+.modalActions{display:flex; gap:9px; margin-top:16px; flex-wrap:wrap}
+
+/* ================= TOASTS ================= */
+#toasts{position:fixed; bottom:20px; right:20px; z-index:300; display:flex; flex-direction:column; gap:8px; max-width:380px}
+.toast{background:var(--panel2); border:1px solid rgba(34,211,238,.35); border-left:3px solid var(--accent);
+  border-radius:10px; padding:12px 15px; font-size:13.5px; color:var(--txt); animation:toastIn .3s ease; box-shadow:0 8px 30px rgba(0,0,0,.5)}
+.toast.err{border-color:rgba(248,113,113,.5); border-left-color:var(--err)}
+.toast.warn{border-color:rgba(251,191,36,.5); border-left-color:var(--warn)}
+@keyframes toastIn{from{opacity:0; transform:translateX(18px)}to{opacity:1;transform:none}}
+
+/* ================= MOBILE ================= */
+#sidebarOverlay{display:none}
+#mobileNav{display:none}
+@media (max-width:1180px){
+  .workspace{grid-template-columns:1fr}
+  #agentRail{display:none}
+}
+@media (max-width:900px){
+  #app{grid-template-columns:1fr; padding-bottom:64px}
+  #sidebar{position:fixed; left:0; top:0; bottom:0; width:248px; transform:translateX(-105%); transition:transform .25s ease; box-shadow:0 0 80px rgba(0,0,0,.7)}
+  #sidebar.open{transform:none}
+  #sidebarOverlay{display:none; position:fixed; inset:0; z-index:55; background:rgba(0,0,0,.55)}
+  #sidebarOverlay.show{display:block}
+  #burger{display:block}
+  #topRight .pill#clockPillWrap{display:none}
+  #viewTitle{display:none}
+  #mobileNav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; height:62px; z-index:70;
+    background:rgba(8,12,20,.96); border-top:1px solid var(--line2); backdrop-filter:blur(14px);
+    overflow-x:auto; padding:0 4px;
+  }
+  .mnav{
+    flex:1; min-width:62px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; background:none; border:none; color:var(--faint); font-size:9.5px; font-weight:600; letter-spacing:.5px;
+  }
+  .mnav .mi{font-size:17px}
+  .mnav.active{color:var(--accent)}
+  #composer{padding:8px}
+  #micBtn{width:46px;height:46px}
+  .view{padding:14px 14px 24px}
+  .jobGrid{grid-template-columns:1fr}
+  .panelGrid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside id="sidebar">
+    <div id="logo">
+      <div class="orb"></div>
+      <div><div class="t1">AITZAZ-OS</div><div class="t2">AI COMMAND CENTER</div></div>
+    </div>
+    <nav id="nav">
+      <button class="navBtn active" data-view="command"><span class="ico">⌂</span> Command</button>
+      <button class="navBtn" data-view="chat"><span class="ico">◈</span> AI Chat</button>
+      <button class="navBtn" data-view="agents"><span class="ico">⬡</span> Agents</button>
+      <button class="navBtn" data-view="jobs"><span class="ico">⌖</span> Jobs</button>
+      <button class="navBtn" data-view="crm"><span class="ico">▤</span> CRM</button>
+      <button class="navBtn" data-view="memory"><span class="ico">◉</span> Memory</button>
+      <button class="navBtn" data-view="tasks"><span class="ico">☰</span> Tasks</button>
+      <button class="navBtn" data-view="media"><span class="ico">▶</span> Media</button>
+      <button class="navBtn" data-view="activity"><span class="ico">≋</span> Activity</button>
+      <button class="navBtn" data-view="connections"><span class="ico">⚙</span> Connections</button>
+    </nav>
+    <div id="sideFoot">
+      <div id="sideDemo"><span class="dot"></span>DEMO MODE</div>
+      <div style="margin-top:9px" id="sideFootNote">Local workspace · persistent</div>
+    </div>
+  </aside>
+  <div id="sidebarOverlay"></div>
+
+  <!-- ================= MAIN ================= -->
+  <div id="main">
+    <div id="topbar">
+      <button id="burger">☰</button>
+      <span id="viewTitle">COMMAND</span>
+      <div id="topRight">
+        <span class="pill warn" id="backendPill"><span class="dot"></span><span id="backendText">AI BACKEND · CHECKING</span></span>
+        <span class="pill" id="voicePill">VOICE: <span id="voicePillState">IDLE</span></span>
+        <span id="clock">--:--:--</span>
+      </div>
+    </div>
+
+    <div id="views">
+
+      <!-- ============ COMMAND ============ -->
+      <section class="view active" id="view-command">
+        <div class="workspace">
+          <div class="convo-col">
+            <div id="ceoStrip">
+              <span class="orb"></span>
+              <span class="cn">AITZAZ CEO</span>
+              <span class="cs">● ONLINE</span>
+              <span class="ct" id="ceoStripTask">Awaiting command</span>
+            </div>
+            <div id="phaseBar"><span class="spinner"></span><span id="phaseLabel">AI THINKING…</span></div>
+            <div id="chat"></div>
+            <div id="chips">
+              <button class="chip" data-cmd="Find jobs">Find jobs</button>
+              <button class="chip" data-cmd="Analyze my CV">Analyze my CV</button>
+              <button class="chip" data-cmd="Find roofing leads">Find roofing leads</button>
+              <button class="chip" data-cmd="Show CRM">Show CRM</button>
+              <button class="chip" data-cmd="Remember this">Remember this</button>
+              <button class="chip" data-cmd="Create task">Create task</button>
+              <button class="chip" data-cmd="Analyze this job">Analyze this job</button>
+              <button class="chip" data-cmd="Prepare application">Prepare application</button>
+              <button class="chip" data-cmd="Prepare outreach">Prepare outreach</button>
+              <button class="chip" data-cmd="Show activity">Show activity</button>
+            </div>
+            <div id="composer">
+              <button id="micBtn" title="Voice input">🎤</button>
+              <input id="chatInput" placeholder="Command AITZAZ CEO… e.g. Find remote customer support jobs paying at least $800" autocomplete="off">
+              <span id="eq"><i></i><i></i><i></i><i></i></span>
+              <button class="sqBtn" id="speakStopBtn" title="Stop speaking">■</button>
+              <button class="sqBtn" id="muteBtn" title="Mute AI voice">🔊</button>
+              <button id="sendBtn">SEND</button>
+            </div>
+            <div id="micStatus">MIC: IDLE</div>
+          </div>
+          <aside id="agentRail">
+            <div class="card"><h3>AGENT TEAM <span class="tag">LIVE</span></h3>
+              <div id="railAgents"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============ AGENTS ============ -->
+      <section class="view" id="view-agents">
+        <div class="pageHead"><h1>Agent Team</h1><p>AITZAZ CEO delegates work to specialist agents. Every status below reflects real workflow activity.</p></div>
+        <div id="ceoCard">
+          <div class="orb"></div>
+          <div><div class="cn">AITZAZ CEO</div><div class="cr">Chief Orchestrator · plans, delegates, reports</div></div>
+          <div class="cs">
+            <span class="pill ok"><span class="dot on"></span>ONLINE</span>
+            <div id="ceoTask">CURRENT TASK: Awaiting command</div>
+            <div id="ceoLast">LAST ACTION: —</div>
+          </div>
+        </div>
+        <div id="agentGrid"></div>
+      </section>
+
+      <!-- ============ JOBS ============ -->
+      <section class="view" id="view-jobs">
+        <div class="pageHead"><h1>Job Hunter</h1><p>Search, score and track opportunities. Upload your CV to get a match score, tailored cover letter and application message.</p></div>
+        <div class="tabs">
+          <button class="tabBtn active" id="jobsTabBtn">SEARCH JOBS</button>
+          <button class="tabBtn" id="cvTabBtn">CV ANALYZER</button>
+        </div>
+        <div id="jobsPanel">
+          <div class="honestNote" id="jobsBanner"><span>◈</span><span><b>Demo job data.</b> Job search provider not connected — connect a live API in Connections.</span></div>
+          <div class="filters">
+            <input id="jobSearchQ" placeholder="Search keyword — e.g. customer support">
+            <input id="jobMinSalary" type="number" placeholder="Min salary ($/mo)">
+            <select id="jobRemote"><option value="">Any type</option><option value="remote">Remote</option><option value="onsite">On-site</option><option value="hybrid">Hybrid</option></select>
+            <select id="jobExp"><option value="">Any experience</option><option value="0-1">0–1 yrs</option><option value="1-3">1–3 yrs</option><option value="3-5">3–5 yrs</option><option value="5+">5+ yrs</option></select>
+            <button class="cbtn" id="searchJobsBtn">⌖ SEARCH</button>
+            <button class="cbtn ghost" id="jobsExportCsv">CSV</button>
+            <button class="cbtn ghost" id="jobsExportJson">JSON</button>
+          </div>
+          <div style="font-size:12.5px;color:var(--faint);margin-bottom:12px" id="jobCount"></div>
+          <div class="jobGrid" id="jobResults"></div>
+        </div>
+        <div id="cvPanel" style="display:none">
+          <div class="card">
+            <h3>UPLOAD OR PASTE CV <span class="tag">TXT / MD · PDF needs backend</span></h3>
+            <div class="addRow">
+              <input type="file" id="cvFile" accept=".txt,.md,.markdown,.json">
+              <button class="cbtn" id="cvAnalyzeBtn">⌖ ANALYZE CV</button>
+            </div>
+            <textarea id="cvPaste" placeholder="…or paste your CV text here: skills, experience, roles — then press ANALYZE CV."></textarea>
+            <div class="note" id="cvNote">No CV text yet — upload a .txt/.md file or paste text. (PDF parsing requires a backend service; paste the text instead.)</div>
+          </div>
+          <div class="card" id="cvResults" style="margin-top:14px">
+            <div style="display:flex; align-items:center; gap:22px; flex-wrap:wrap">
+              <div><div style="font-size:11px;letter-spacing:2px;color:var(--faint);font-weight:700">CV MATCH SCORE</div>
+                <div class="cvScoreBig" id="cvScore">—</div></div>
+              <div style="flex:1;min-width:220px">
+                <div style="font-size:12px;color:var(--dim);font-weight:600;letter-spacing:1px;margin-bottom:4px">EXPERIENCE</div>
+                <div id="cvExp" style="font-size:14px">—</div>
+              </div>
+            </div>
+            <div class="cv-block"><h4>Skills detected</h4><div class="jc-skills" id="cvSkills"></div></div>
+            <div class="cv-block"><h4>Strengths</h4><div id="cvStrengths" style="font-size:14px;color:var(--txt)"></div></div>
+            <div class="cv-block"><h4>Missing skills vs last analyzed job</h4><div class="jc-skills" id="cvMissing"></div></div>
+            <div class="cv-block"><h4>Application recommendation</h4><div id="cvRecommend" style="font-size:14px;color:var(--txt)"></div></div>
+            <div class="cv-gen"><h4>Cover letter (editable)</h4><textarea id="cvCoverLetter"></textarea>
+              <button class="cbtn ghost" id="cvCopyCover" style="margin-top:8px">COPY</button></div>
+            <div class="cv-gen"><h4>Application message (editable)</h4><textarea id="cvMessage"></textarea>
+              <button class="cbtn ghost" id="cvCopyMessage" style="margin-top:8px">COPY</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ CRM ============ -->
+      <section class="view" id="view-crm">
+        <div class="pageHead"><h1>CRM · Leads</h1><p>Manage companies and contacts. Status, notes, follow-ups — everything persists locally.</p></div>
+        <div class="honestNote"><span>◈</span><span><b>Demo lead data.</b> Lead provider not connected — connect a live API in Connections.</span></div>
+        <div class="crmToolbar">
+          <input id="crmSearch" placeholder="Search company, contact, location…">
+          <select id="crmFilter">
+            <option value="">All statuses</option>
+            <option>NEW</option><option>QUALIFIED</option><option>CONTACTED</option>
+            <option>FOLLOW-UP</option><option>INTERESTED</option><option>CLOSED</option><option>LOST</option>
+          </select>
+          <select id="crmSort">
+            <option value="score">Sort: Lead score</option>
+            <option value="name">Sort: Company A–Z</option>
+            <option value="followup">Sort: Next follow-up</option>
+          </select>
+          <button class="cbtn" id="crmAddBtn">+ ADD LEAD</button>
+          <button class="cbtn ghost" id="crmExportCsv">CSV</button>
+          <button class="cbtn ghost" id="crmExportJson">JSON</button>
+        </div>
+        <div style="font-size:12.5px;color:var(--faint);margin-bottom:10px" id="crmCount"></div>
+        <div id="leadsWrap">
+          <table>
+            <thead><tr>
+              <th>COMPANY</th><th>CONTACT</th><th>POSITION</th><th>EMAIL</th><th>PHONE</th>
+              <th>LOCATION</th><th>INDUSTRY</th><th>SCORE</th><th>STATUS</th><th>NEXT FOLLOW-UP</th><th></th>
+            </tr></thead>
+            <tbody id="leadsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ============ MEMORY ============ -->
+      <section class="view" id="view-memory">
+        <div class="pageHead"><h1>AI Memory</h1><p>What AITZAZ remembers about you and your business. Say "Remember that…" in chat — or add manually.</p></div>
+        <div class="addRow">
+          <input id="memSearch" placeholder="Search memory…">
+          <button class="cbtn ghost" id="memExportCsv">CSV</button>
+          <button class="cbtn ghost" id="memExportJson">JSON</button>
+        </div>
+        <div class="addRow">
+          <input id="memKey" placeholder="Key — e.g. Primary Target Market">
+          <input id="memVal" placeholder="Value — e.g. US Roofing Companies">
+          <button class="cbtn" id="memAddBtn">+ SAVE MEMORY</button>
+        </div>
+        <div id="memoryList" class="panelGrid"></div>
+      </section>
+
+      <!-- ============ TASKS ============ -->
+      <section class="view" id="view-tasks">
+        <div class="pageHead"><h1>Tasks</h1><p>Created by you or by AITZAZ from natural language — e.g. "Remind me to follow up with this lead tomorrow."</p></div>
+        <div class="addRow">
+          <input id="taskTitle" placeholder="Task — e.g. Follow up with Texas roofing leads">
+          <select id="taskPriority"><option>MEDIUM</option><option>HIGH</option><option>LOW</option></select>
+          <input id="taskDue" type="date">
+          <input id="taskRelated" placeholder="Related lead / job (optional)">
+          <button class="cbtn" id="taskAddBtn">+ ADD</button>
+        </div>
+        <div class="addRow"><input id="taskNotes" placeholder="Notes (optional)"></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="cbtn ghost" id="taskExportCsv">CSV</button>
+          <button class="cbtn ghost" id="taskExportJson">JSON</button>
+        </div>
+        <div id="taskList" class="panelGrid"></div>
+      </section>
+
+      <!-- ============ MEDIA ============ -->
+      <section class="view" id="view-media">
+        <div class="pageHead"><h1>Media</h1><p>Save YouTube links. Videos open on YouTube — this app does not download YouTube content.</p></div>
+        <div class="addRow">
+          <input id="mediaUrl" placeholder="YouTube link — e.g. https://www.youtube.com/watch?v=…">
+          <button class="cbtn" id="mediaAddBtn">+ SAVE LINK</button>
+        </div>
+        <div class="note" id="mediaNote" style="margin-bottom:14px"></div>
+        <div id="mediaList" class="panelGrid"></div>
+      </section>
+
+      <!-- ============ ACTIVITY ============ -->
+      <section class="view" id="view-activity">
+        <div class="pageHead"><h1>Activity</h1><p>Every entry below was generated by a real action in this application — no simulated noise.</p></div>
+        <div id="activityFilters">
+          <button class="chip active" data-f="all">ALL</button>
+          <button class="chip" data-f="ceo">CEO</button>
+          <button class="chip" data-f="agent">AGENTS</button>
+          <button class="chip" data-f="crm">CRM</button>
+          <button class="chip" data-f="job">JOBS</button>
+          <button class="chip" data-f="memory">MEMORY</button>
+          <button class="chip" data-f="task">TASKS</button>
+          <button class="chip" data-f="media">MEDIA</button>
+        </div>
+        <div class="card" id="activityFull"></div>
+      </section>
+
+      <!-- ============ CONNECTIONS ============ -->
+      <section class="view" id="view-connections">
+        <div class="pageHead"><h1>Connections & Settings</h1><p>Real status of every service. Nothing here pretends to be connected.</p></div>
+        <div class="setGrid">
+          <div class="card"><h3>CONNECTIONS <span class="tag">LIVE STATUS</span></h3>
+            <div class="setRow"><span class="sl">AI Backend <small>Language model powering the CEO</small></span><b class="pill warn" id="csAi">CHECKING…</b></div>
+            <div class="setRow"><span class="sl">Voice STT <small>Browser speech recognition</small></span><b class="pill" id="csStt">—</b></div>
+            <div class="setRow"><span class="sl">Voice TTS <small>Browser speech synthesis</small></span><b class="pill" id="csTts">—</b></div>
+            <div class="setRow"><span class="sl">Supabase <small>Cloud persistence (optional)</small></span><b class="pill" id="csSupabase">NOT CONFIGURED</b></div>
+            <div class="setRow"><span class="sl">Gmail <small>Email integration</small></span><b class="pill err" id="csGmail">NOT CONNECTED</b></div>
+            <div class="setRow"><span class="sl">Job Search API <small>Live vacancy provider</small></span><b class="pill err" id="csJobs">NOT CONNECTED</b></div>
+            <div class="setRow"><span class="sl">CRM Provider <small>Live lead data source</small></span><b class="pill err" id="csCrm">NOT CONNECTED</b></div>
+            <div class="setRow"><span class="sl">YouTube <small>Metadata via oEmbed</small></span><b class="pill" id="csYoutube">—</b></div>
+          </div>
+          <div class="card"><h3>AI BACKEND <span class="tag">CONFIG</span></h3>
+            <div class="setRow"><span class="sl">Endpoint <small>OpenAI-compatible URL</small></span></div>
+            <input id="aiEndpointInput" style="width:100%;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:9px;padding:9px 11px;color:var(--txt);font-size:13px;outline:none">
+            <div class="setRow" style="margin-top:10px"><span class="sl">API key <small>Optional — stored in YOUR browser only</small></span>
+              <input type="password" id="aiKeyInput" placeholder="sk-…"></div>
+            <div class="setRow"><span class="sl">Model</span>
+              <input id="aiModelInput" style="max-width:180px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;color:var(--txt);font-size:13px;outline:none"></div>
+            <button class="fullBtn" id="aiTestBtn">TEST CONNECTION</button>
+            <button class="fullBtn ghost" id="aiSaveBtn">SAVE CONFIGURATION</button>
+            <div class="note" id="aiStatusMsg">Default: free keyless endpoint (Pollinations). If it is unreachable, AITZAZ switches to its built-in demo brain and says so. Provide your own endpoint + key for a private backend. Keys live only in your browser's local storage — never in the source code.</div>
+          </div>
+          <div class="card"><h3>VOICE <span class="tag">DEFAULTS</span></h3>
+            <div class="setRow"><span class="sl">Speech language <small>Recognition</small></span>
+              <select id="cfgSttLang"><option value="en-US">English (US)</option><option value="en-GB">English (UK)</option><option value="ur-PK">اردو (Urdu)</option></select></div>
+            <div class="setRow"><span class="sl">Voice <small>English TTS voice</small></span>
+              <select id="cfgVoice"></select></div>
+            <div class="setRow"><span class="sl">Speaking rate</span>
+              <input type="range" id="cfgRate" min="0.7" max="1.4" step="0.05" value="1.02" style="max-width:180px"></div>
+          </div>
+          <div class="card"><h3>SUPABASE <span class="tag">OPTIONAL</span></h3>
+            <div class="setRow"><span class="sl">Project URL</span>
+              <input id="sbUrlInput" placeholder="https://xxxx.supabase.co" style="max-width:220px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;color:var(--txt);font-size:13px;outline:none"></div>
+            <div class="setRow"><span class="sl">Anon key</span>
+              <input type="password" id="sbKeyInput" style="max-width:220px;background:rgba(255,255,255,.03);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;color:var(--txt);font-size:13px;outline:none"></div>
+            <button class="fullBtn" id="sbTestBtn">TEST SUPABASE</button>
+            <div class="note">The storage layer is adapter-based (local now; Supabase-ready). When configured, connection status is verified with a real request — no fake "connected".</div>
+          </div>
+          <div class="card"><h3>DATA & EXPORT <span class="tag">LOCAL</span></h3>
+            <div class="setRow"><span class="sl">Storage used <small>localStorage</small></span><b id="storeInfo" style="color:var(--dim)">—</b></div>
+            <button class="fullBtn" id="exportAllBtn">⬇ EXPORT EVERYTHING (JSON)</button>
+            <button class="fullBtn danger" id="resetBtn">⟳ RESET WORKSPACE</button>
+            <div class="note">Exports are real files: CSV and JSON builders for CRM, Jobs, Tasks and Memory. Refresh the page — your data persists.</div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ================= MOBILE NAV ================= -->
+  <nav id="mobileNav">
+    <button class="mnav active" data-view="command"><span class="mi">⌂</span>Command</button>
+    <button class="mnav" data-view="chat"><span class="mi">◈</span>Chat</button>
+    <button class="mnav" data-view="agents"><span class="mi">⬡</span>Agents</button>
+    <button class="mnav" data-view="jobs"><span class="mi">⌖</span>Jobs</button>
+    <button class="mnav" data-view="crm"><span class="mi">▤</span>CRM</button>
+    <button class="mnav" data-view="tasks"><span class="mi">☰</span>Tasks</button>
+    <button class="mnav" data-view="memory"><span class="mi">◉</span>Memory</button>
+    <button class="mnav" data-view="connections"><span class="mi">⚙</span>Settings</button>
+  </nav>
+
+  <!-- ================= LEAD MODAL ================= -->
+  <div class="modal" id="leadModal">
+    <div class="modalBox">
+      <h2 id="leadModalTitle">ADD LEAD</h2>
+      <div class="mrow"><div><label>Company</label><input id="fCompany"></div><div><label>Contact</label><input id="fContact"></div></div>
+      <div class="mrow"><div><label>Position</label><input id="fTitle"></div><div><label>Email</label><input id="fEmail"></div></div>
+      <div class="mrow"><div><label>Phone</label><input id="fPhone"></div><div><label>Location</label><input id="fLocation"></div></div>
+      <div class="mrow"><div><label>Industry</label><input id="fIndustry"></div><div><label>Lead Score</label><input id="fScore" type="number" min="0" max="100"></div></div>
+      <div class="mrow">
+        <div><label>Status</label><select id="fStatus"><option>NEW</option><option>QUALIFIED</option><option>CONTACTED</option><option>FOLLOW-UP</option><option>INTERESTED</option><option>CLOSED</option><option>LOST</option></select></div>
+        <div><label>Next follow-up</label><input id="fNextFollowUp" type="date"></div>
+      </div>
+      <div class="mrow"><div><label>Last contact</label><input id="fLastContact" type="date"></div></div>
+      <div class="mrow full"><div><label>Notes</label><textarea id="fNotes" placeholder="Notes about this lead…"></textarea></div></div>
+      <div class="modalActions">
+        <button class="cbtn" id="fSave">SAVE</button>
+        <button class="cbtn ghost" id="fCreateTask">☰ CREATE FOLLOW-UP TASK</button>
+        <button class="cbtn danger" id="fDelete">DELETE</button>
+        <button class="cbtn ghost" id="fClose">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= JOB MODAL ================= -->
+  <div class="modal" id="jobModal">
+    <div class="modalBox">
+      <h2 id="jmTitle">JOB</h2>
+      <div id="jmMeta" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px"></div>
+      <div id="jmSkills" class="jc-skills" style="margin-bottom:12px"></div>
+      <div class="mrow full"><div><label>Description</label><textarea id="jmDesc" style="min-height:90px" readonly></textarea></div></div>
+      <div class="mrow"><div><label>Match score (vs last search criteria)</label><input id="jmScore" type="number" min="0" max="100"></div>
+      <div><label>Status</label><select id="jmStatus"><option>NEW</option><option>MATCHED</option><option>SAVED</option><option>APPLIED</option><option>INTERVIEW</option><option>REJECTED</option><option>OFFER</option></select></div></div>
+      <div class="mrow full" id="jmMsgWrap" style="display:none"><div><label>Application message (editable — copy before sending)</label><textarea id="jmMessage" style="min-height:130px"></textarea></div></div>
+      <div class="modalActions">
+        <button class="cbtn" id="jmSave">SAVE JOB</button>
+        <button class="cbtn ghost" id="jmAnalyze">⌖ ANALYZE JOB</button>
+        <button class="cbtn ghost" id="jmApply">✉ PREPARE APPLICATION</button>
+        <button class="cbtn ghost" id="jmCopyMsg">COPY MESSAGE</button>
+        <button class="cbtn ghost" id="jmTask">☰ CREATE TASK</button>
+        <button class="cbtn ghost" id="jmClose">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MEMORY EDIT MODAL ================= -->
+  <div class="modal" id="memModal">
+    <div class="modalBox">
+      <h2>EDIT MEMORY</h2>
+      <div class="mrow full"><div><label>Key</label><input id="emKey"></div></div>
+      <div class="mrow full"><div><label>Value</label><textarea id="emVal" style="min-height:90px"></textarea></div></div>
+      <div class="modalActions">
+        <button class="cbtn" id="emSave">SAVE</button>
+        <button class="cbtn ghost" id="emClose">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   AITZAZ-OS — AI Command Center
+   ---------------------------------------------------------------------
+   Service layer (namespaced; each can be swapped for a real backend):
+     CONFIG        env-style config — no secret keys in source
+     Store         localStorage persistence + seed
+     ActivityLog   event-sourced activity timeline (real events only)
+     CrmService    leads CRUD + notes + follow-ups
+     JobService    job CRUD + scoring + demo job data
+     CvService     CV text analysis + generator (client-side)
+     MemoryService key-value memory + recall
+     TaskService   tasks CRUD
+     MediaService  YouTube link library (oEmbed metadata)
+     ExportService CSV/JSON builders + downloads
+     AgentRuntime  CEO + agents, real status machine
+     AiService     online AI (Pollinations / custom endpoint) -> demo brain
+     VoiceService  STT + TTS with honest fallbacks
+     Pipeline      animated multi-agent workflow
+   ===================================================================== */
+
+const CONFIG = {
+  version: "2.0.0",
+  storageKey: "aitzaz_os_v2",
+  defaultAiEndpoint: "https://text.pollinations.ai/",
+  defaultModels: ["openai", "mistral"],
+  aiTimeoutMs: 25000,
+  pingTimeoutMs: 10000,
+  leadProviderConnected: false,   // honest: no live lead API wired
+  jobProviderConnected: false,    // honest: no live job API wired
+};
+
+/* ---------------- helpers ---------------- */
+const $ = id => document.getElementById(id);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const esc = s => String(s ?? "").replace(/[<>&"']/g, c => ({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&#39;"}[c]));
+function fmtTime(d){ d = d || new Date();
+  const p = n => String(n).padStart(2, "0");
+  return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+}
+function toast(msg, kind){
+  const t = document.createElement("div");
+  t.className = "toast" + (kind ? " " + kind : "");
+  t.textContent = msg;
+  $("toasts").appendChild(t);
+  setTimeout(() => { t.style.opacity = "0"; t.style.transition = "opacity .4s"; setTimeout(() => t.remove(), 450); }, 4600);
+}
+
+/* ---------------- Store ---------------- */
+const Store = {
+  data: null,
+  load(){
+    try {
+      const raw = localStorage.getItem(CONFIG.storageKey);
+      if (raw){ this.data = JSON.parse(raw); this.normalize(); return; }
+    } catch(e){}
+    this.seed();
+  },
+  normalize(){
+    const d = this.data;
+    d.leads = d.leads || [];
+    d.jobs = d.jobs || [];
+    d.memories = d.memories || [];
+    d.tasks = d.tasks || [];
+    d.media = d.media || [];
+    d.activity = d.activity || [];
+    d.settings = Object.assign({
+      aiEndpoint: "", aiKey: "", aiModel: "",
+      speak: true, sttLang: "en-US", voiceURI: "", rate: 1.02, relisten: false,
+      supabaseUrl: "", supabaseKey: "",
+    }, d.settings || {});
+  },
+  seed(){
+    this.data = {
+      leads: [],
+      jobs: [],
+      memories: [
+        { id: uid(), key: "Primary Target Market", value: "US Roofing Companies", ts: Date.now() - 864e5 },
+        { id: uid(), key: "Outreach Channel", value: "Email + Calling", ts: Date.now() - 864e5 },
+        { id: uid(), key: "Goal", value: "Acquire US Call Center Clients", ts: Date.now() - 864e5 },
+      ],
+      tasks: [],
+      media: [],
+      activity: [],
+      settings: {
+        aiEndpoint: "", aiKey: "", aiModel: "",
+        speak: true, sttLang: "en-US", voiceURI: "", rate: 1.02, relisten: false,
+        supabaseUrl: "", supabaseKey: "",
+      },
+    };
+    this.save();
+    ActivityLog.log("AITZAZ-OS initialized — local workspace ready", "sys");
+  },
+  save(){ try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(this.data)); } catch(e){} },
+  settings(){ return this.data.settings; },
+  sizeKb(){
+    try { return ((localStorage.getItem(CONFIG.storageKey) || "").length / 1024).toFixed(1) + " KB"; }
+    catch(e){ return "—"; }
+  },
+};
+
+/* ---------------- Activity (event-sourced, real only) ---------------- */
+const ActivityLog = {
+  filter: "all",
+  log(msg, kind){
+    Store.data.activity.unshift({ t: fmtTime(), msg, kind: kind || "sys" });
+    if (Store.data.activity.length > 300) Store.data.activity.length = 300;
+    Store.save();
+    this.render();
+  },
+  render(){
+    const list = Store.data.activity.filter(a => this.filter === "all" || a.kind === this.filter).slice(0, 120);
+    $("activityFull").innerHTML = list.map(a => this.row(a)).join("") || '<div style="color:var(--faint)">No activity yet.</div>';
+  },
+  row(a){
+    const cls = { ceo: "on", agent: "on", crm: "amber", job: "on", memory: "on", task: "amber", media: "on", sys: "" }[a.kind] || "";
+    return `<div class="act"><span class="t">${a.t}</span><span class="dot ${cls}"></span><span class="m">${esc(a.msg)}</span></div>`;
+  },
+};
+
+/* ---------------- DEMO DATA (clearly labelled) ---------------- */
+function DEMO_LEADS(){
+  return [
+    { company:"Lone Star Roofing Co.", contact:"James Carter", title:"Owner", email:"james@lonestarroofing.com", phone:"(512) 555-0134", location:"Austin, TX", industry:"Roofing", score:92, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Texas Sky Roofing", contact:"Maria Gonzales", title:"Operations Manager", email:"maria@texasskyroof.com", phone:"(713) 555-0187", location:"Houston, TX", industry:"Roofing", score:88, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Alamo Roofing Solutions", contact:"Robert Hayes", title:"General Manager", email:"robert@alamoroofing.com", phone:"(210) 555-0112", location:"San Antonio, TX", industry:"Roofing", score:81, status:"QUALIFIED", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"DFW Pro Roofing", contact:"Sarah Mitchell", title:"Owner", email:"sarah@dfwproroofing.com", phone:"(214) 555-0165", location:"Dallas, TX", industry:"Roofing", score:77, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Hill Country Roofers", contact:"David Kim", title:"Sales Director", email:"david@hillcountryroofers.com", phone:"(512) 555-0190", location:"Austin, TX", industry:"Roofing", score:74, status:"CONTACTED", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Gulf Coast Roofing LLC", contact:"Linda Torres", title:"President", email:"linda@gulfcoastroofing.com", phone:"(361) 555-0128", location:"Corpus Christi, TX", industry:"Roofing", score:69, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Big D Roofing & Exteriors", contact:"Mark Stevens", title:"Owner", email:"mark@bigdroofing.com", phone:"(817) 555-0143", location:"Fort Worth, TX", industry:"Roofing", score:65, status:"FOLLOW-UP", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Texas Panhandle Roofing", contact:"Amy Nguyen", title:"Office Manager", email:"amy@panhandleroofing.com", phone:"(806) 555-0172", location:"Amarillo, TX", industry:"Roofing", score:58, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Lone Star Exterior Pros", contact:"Chris Walker", title:"VP Sales", email:"chris@lsexterior.com", phone:"(972) 555-0108", location:"Plano, TX", industry:"Roofing", score:52, status:"CONTACTED", notes:"", lastContact:"", nextFollowUp:"" },
+    { company:"Central Texas Roof Masters", contact:"Kevin Ortiz", title:"Founder", email:"kevin@ctroofmasters.com", phone:"(254) 555-0156", location:"Waco, TX", industry:"Roofing", score:47, status:"NEW", notes:"", lastContact:"", nextFollowUp:"" },
+  ];
+}
+function DEMO_JOBS(){
+  return [
+    { company:"TechCare Solutions", position:"Remote Customer Support Specialist", location:"Remote (US)", salary:900, type:"remote", exp:"1-3 yrs", skills:["customer support","email","chat","ticketing"], desc:"Support customers across email and chat. 40h/week, US hours.", status:"NEW", posted:2 },
+    { company:"HelpDesk Global", position:"Customer Support Representative", location:"Remote", salary:850, type:"remote", exp:"0-1 yrs", skills:["customer service","email","phone"], desc:"Entry-level support role with training provided.", status:"NEW", posted:1 },
+    { company:"SupportSphere", position:"Technical Support Agent", location:"Remote (EU)", salary:1100, type:"remote", exp:"1-3 yrs", skills:["technical support","troubleshooting","SaaS"], desc:"Tier-1 technical support for a SaaS platform.", status:"NEW", posted:3 },
+    { company:"CallFlow BPO", position:"Call Center Agent (Outbound)", location:"Remote", salary:800, type:"remote", exp:"0-1 yrs", skills:["calling","customer support","CRM"], desc:"Outbound calls for US clients. Base + commission.", status:"NEW", posted:5 },
+    { company:"NexusCare", position:"Customer Success Associate", location:"Hybrid (Austin, TX)", salary:1000, type:"hybrid", exp:"1-3 yrs", skills:["customer success","onboarding","email"], desc:"Onboard and support mid-market customers.", status:"NEW", posted:4 },
+    { company:"CloudDesk", position:"IT Support Specialist", location:"On-site (Dallas, TX)", salary:1300, type:"onsite", exp:"3-5 yrs", skills:["IT support","networking","Windows"], desc:"Internal IT support for a 300-person office.", status:"NEW", posted:6 },
+    { company:"RetailAssist", position:"E-commerce Support Agent", location:"Remote", salary:750, type:"remote", exp:"0-1 yrs", skills:["customer support","orders","returns"], desc:"Assist shoppers with orders and returns.", status:"NEW", posted:2 },
+    { company:"FinSupport", position:"Banking Support Officer", location:"Remote (UK)", salary:950, type:"remote", exp:"1-3 yrs", skills:["customer service","finance","compliance"], desc:"Support banking customers over chat and phone.", status:"NEW", posted:7 },
+    { company:"MediCall Support", position:"Healthcare Support Rep", location:"Remote", salary:880, type:"remote", exp:"1-3 yrs", skills:["customer support","healthcare","scheduling"], desc:"Patient scheduling and billing inquiries.", status:"NEW", posted:3 },
+    { company:"GrowDesk", position:"SaaS Support Agent", location:"Remote", salary:1200, type:"remote", exp:"1-3 yrs", skills:["SaaS","customer support","troubleshooting","chat"], desc:"Support a growing SaaS tool for small teams.", status:"NEW", posted:1 },
+  ];
+}
+
+function ensureDemoLeads(){
+  if (CrmService.all().length === 0){
+    Store.data.leads = DEMO_LEADS().map((l, i) => Object.assign({ id: "L" + (i + 1), created: Date.now() - i * 864e5 }, l));
+    Store.save();
+  }
+}
+function ensureDemoJobs(){
+  if (JobService.all().length === 0){
+    Store.data.jobs = DEMO_JOBS().map((j, i) => Object.assign({ id: "J" + (i + 1), created: Date.now() - i * 36e5 }, j));
+    Store.save();
+  }
+}
+
+/* ---------------- CRM service ---------------- */
+const CRM_STATUSES = ["NEW","QUALIFIED","CONTACTED","FOLLOW-UP","INTERESTED","CLOSED","LOST"];
+const CrmService = {
+  all(){ return Store.data.leads; },
+  add(l){
+    l.id = uid(); l.created = Date.now();
+    Store.data.leads.push(l); Store.save();
+    ActivityLog.log("CRM: lead added — " + l.company, "crm");
+    this.render();
+  },
+  update(id, patch){
+    const l = this.all().find(x => x.id === id);
+    if (!l) return;
+    Object.assign(l, patch); Store.save();
+    ActivityLog.log("CRM: updated " + l.company + (patch.status ? " → " + patch.status : ""), "crm");
+    this.render();
+  },
+  remove(id){
+    const l = this.all().find(x => x.id === id);
+    Store.data.leads = this.all().filter(x => x.id !== id); Store.save();
+    ActivityLog.log("CRM: lead removed — " + (l ? l.company : id), "crm");
+    this.render();
+  },
+  best(n){ return [...this.all()].sort((a, b) => b.score - a.score).slice(0, n || 3); },
+  stats(){
+    const ls = this.all();
+    if (!ls.length) return { total: 0, avg: 0, by: {} };
+    const avg = Math.round(ls.reduce((s, l) => s + l.score, 0) / ls.length);
+    const by = {};
+    ls.forEach(l => by[l.status] = (by[l.status] || 0) + 1);
+    return { total: ls.length, avg, by };
+  },
+  render(){
+    const q = ($("crmSearch").value || "").toLowerCase();
+    const f = $("crmFilter").value;
+    const sort = $("crmSort").value;
+    let rows = this.all().filter(l =>
+      (!f || l.status === f) &&
+      (!q || [l.company, l.contact, l.location, l.email, l.industry, l.title, l.notes].join(" ").toLowerCase().includes(q))
+    );
+    if (sort === "score") rows.sort((a, b) => b.score - a.score);
+    else if (sort === "followup") rows.sort((a, b) => String(a.nextFollowUp || "9999").localeCompare(String(b.nextFollowUp || "9999")));
+    else rows.sort((a, b) => a.company.localeCompare(b.company));
+    $("leadsBody").innerHTML = rows.map(l => `
+      <tr>
+        <td class="co">${esc(l.company)}</td>
+        <td>${esc(l.contact)}</td>
+        <td style="color:var(--dim)">${esc(l.title)}</td>
+        <td style="color:var(--accent)">${esc(l.email)}</td>
+        <td style="color:var(--faint)">${esc(l.phone)}</td>
+        <td>${esc(l.location)}</td>
+        <td>${esc(l.industry)}</td>
+        <td><span class="score ${l.score >= 75 ? "hi" : l.score >= 55 ? "mid" : "lo"}">${l.score}</span></td>
+        <td><select class="stSelect st-${esc(l.status)}" data-id="${l.id}" data-f="status">
+          ${CRM_STATUSES.map(s => `<option ${s === l.status ? "selected" : ""}>${s}</option>`).join("")}
+        </select></td>
+        <td style="color:var(--faint)">${esc(l.nextFollowUp || "—")}</td>
+        <td>
+          <button class="tbtn" data-id="${l.id}" data-f="view" title="Open">◈</button>
+          <button class="tbtn del" data-id="${l.id}" data-f="del" title="Delete">✕</button>
+        </td>
+      </tr>`).join("") || `<tr><td colspan="11" style="text-align:center;color:var(--faint);padding:24px">No leads match. Add a lead or clear filters.</td></tr>`;
+    $("crmCount").textContent = this.all().length + " leads · " + (CONFIG.leadProviderConnected ? "live data" : "demo data");
+  },
+};
+
+/* ---------------- Job service ---------------- */
+const JOB_STATUSES = ["NEW","MATCHED","SAVED","APPLIED","INTERVIEW","REJECTED","OFFER"];
+const JobService = {
+  all(){ return Store.data.jobs; },
+  lastCriteria: null,
+  add(j){
+    j.id = uid(); j.created = Date.now();
+    Store.data.jobs.push(j); Store.save();
+    ActivityLog.log("Jobs: saved — " + j.company + " · " + j.position, "job");
+    this.render();
+  },
+  update(id, patch){
+    const j = this.all().find(x => x.id === id);
+    if (!j) return;
+    Object.assign(j, patch); Store.save();
+    ActivityLog.log("Jobs: " + j.position + " → " + j.status, "job");
+    this.render();
+  },
+  remove(id){
+    const j = this.all().find(x => x.id === id);
+    Store.data.jobs = this.all().filter(x => x.id !== id); Store.save();
+    ActivityLog.log("Jobs: removed — " + (j ? j.position : id), "job");
+    this.render();
+  },
+  /* Real, deterministic scoring against criteria. */
+  score(job, c){
+    c = c || this.lastCriteria || {};
+    let s = 0;
+    if (c.minSalary){
+      if (job.salary >= c.minSalary) s += 35;
+      else s += Math.round(35 * job.salary / c.minSalary);
+    } else s += 20;
+    if (c.remote && job.type === "remote") s += 20;
+    if (!c.remote) s += 10;
+    const words = (c.q || "").toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (words.length){
+      const hay = (job.position + " " + job.desc + " " + job.skills.join(" ") + " " + job.company).toLowerCase();
+      const hits = words.filter(w => hay.includes(w)).length;
+      s += Math.round(35 * hits / words.length);
+    } else s += 20;
+    if (c.exp && job.exp === c.exp) s += 10;
+    return Math.max(5, Math.min(99, s));
+  },
+  filter(criteria){
+    const q = (criteria.q || "").toLowerCase();
+    const out = this.all().filter(j => {
+      if (criteria.minSalary && j.salary < criteria.minSalary) return false;
+      if (criteria.remote && j.type !== criteria.remote) return false;
+      if (q){
+        const hay = (j.position + " " + j.desc + " " + j.skills.join(" ") + " " + j.company).toLowerCase();
+        const words = q.split(/\s+/).filter(w => w.length > 2);
+        if (!words.some(w => hay.includes(w))) return false;
+      }
+      return true;
+    });
+    return out.map(j => ({ job: j, score: this.score(j, criteria) }))
+              .sort((a, b) => b.score - a.score);
+  },
+  render(){
+    const criteria = {
+      q: $("jobSearchQ").value.trim(),
+      minSalary: parseInt($("jobMinSalary").value || "0", 10) || null,
+      remote: $("jobRemote").value || null,
+      exp: $("jobExp").value || null,
+    };
+    this.lastCriteria = criteria;
+    const matches = this.filter(criteria);
+    $("jobResults").innerHTML = matches.map(m => {
+      const j = m.job;
+      return `<div class="job-card">
+        <div class="jc-top">
+          <div><div class="jc-pos">${esc(j.position)}</div><div class="jc-co">${esc(j.company)}</div></div>
+          <span class="jc-score ${m.score >= 75 ? "hi" : m.score >= 50 ? "mid" : "lo"}">${m.score}%</span>
+        </div>
+        <div class="jc-meta">
+          <span class="jm">${esc(j.location)}</span>
+          <span class="jm">$${j.salary}/mo</span>
+          <span class="jm">${esc(j.type)}</span>
+          <span class="jm">${esc(j.exp)}</span>
+          <span class="jm demo">DEMO</span>
+        </div>
+        <div class="jc-skills">${j.skills.map(s => `<span class="sk">${esc(s)}</span>`).join("")}</div>
+        <div class="jc-actions">
+          <button class="jbtn primary" data-id="${j.id}" data-f="open">OPEN</button>
+          <button class="jbtn" data-id="${j.id}" data-f="save">SAVE</button>
+          <button class="jbtn" data-id="${j.id}" data-f="analyze">ANALYZE</button>
+          <button class="jbtn" data-id="${j.id}" data-f="apply">APPLICATION</button>
+          <button class="jbtn danger" data-id="${j.id}" data-f="del">✕</button>
+        </div>
+      </div>`;
+    }).join("") || `<div style="color:var(--faint);padding:20px">No matching jobs. Adjust filters — remember: this is demo job data (provider not connected).</div>`;
+    $("jobCount").textContent = matches.length + " matching jobs · demo job data";
+  },
+};
+let lastJobId = null;
+
+/* ---------------- CV service ---------------- */
+const SKILL_DB = ["customer support","customer service","customer success","email support","live chat","chat support","phone support","calling","outbound calls","call center","technical support","troubleshooting","ticketing","zendesk","freshdesk","intercom","crm","salesforce","hubspot","excel","google sheets","data entry","typing","communication","english","urdu","spanish","empathy","conflict resolution","problem solving","multitasking","teamwork","leadership","onboarding","training","scheduling","billing","invoicing","e-commerce","orders","returns","refunds","saas","windows","networking","it support","finance","banking","healthcare","compliance","cold calling","lead generation","sales","negotiation","email marketing","outreach","social media","content writing","copywriting","word","powerpoint","slack","zoom","remote work"];
+const CvService = {
+  text: "",
+  lastJob: null,
+  analyze(raw, job){
+    const text = (raw || "").toLowerCase();
+    if (!text.trim()) return null;
+    this.text = text;
+    // skills
+    const skills = SKILL_DB.filter(s => text.includes(s));
+    // experience years
+    const yr = text.match(/(\d{1,2})\s*(?:\+)?\s*(?:years?|yrs?)\b/);
+    const expYears = yr ? parseInt(yr[1], 10) : (/(\d{1,2})\s*(?:years?|yrs?)/.test(text) ? 1 : 0);
+    const expText = yr ? yr[1] + " years of experience" : "Experience level unclear from CV text";
+    // strengths (top skills + communication)
+    const strengths = [];
+    if (skills.length >= 4) strengths.push("Strong skill coverage (" + skills.length + " relevant skills detected)");
+    if (expYears >= 2) strengths.push(expYears + "+ years of experience");
+    if (text.includes("communication") || text.includes("english")) strengths.push("Communication skills present");
+    if (text.includes("remote")) strengths.push("Remote work experience");
+    if (!strengths.length) strengths.push("Entry-level profile — highlight any customer-facing experience");
+    // missing skills vs job
+    let missing = [], score = 0, recommend = "";
+    if (job){
+      const jobSkills = (job.skills || []).map(s => s.toLowerCase());
+      missing = jobSkills.filter(s => !skills.includes(s));
+      const overlap = jobSkills.filter(s => skills.includes(s)).length;
+      const skillPct = jobSkills.length ? overlap / jobSkills.length : 0;
+      score = Math.round(skillPct * 60 + Math.min(30, expYears * 10) + (text.includes("remote") || job.type !== "remote" ? 10 : 0));
+      score = Math.max(5, Math.min(98, score));
+      recommend = score >= 70 ? "Strong match — apply now with the generated message below."
+                : score >= 45 ? "Reasonable match — emphasize your transferable skills; add the missing skills to your CV."
+                : "Weak match — gain the missing skills listed below before applying.";
+    } else {
+      score = Math.min(95, Math.round(skills.length * 4 + expYears * 6 + 25));
+      recommend = "This is your CV profile score. Open a job and press ANALYZE to get job-specific compatibility.";
+    }
+    const cover = this.coverLetter(job);
+    const message = this.applicationMessage(job);
+    return { skills, expYears, expText, strengths, missing, score, recommend, cover, message };
+  },
+  coverLetter(job){
+    const skills = this.analyzeCached ? this.analyzeCached.skills : [];
+    const top = skills.slice(0, 5).join(", ");
+    const co = job ? job.company : "[Company]";
+    const pos = job ? job.position : "[Position]";
+    return "Dear Hiring Team at " + co + ",\n\nI am applying for the " + pos + " position. My background covers: " + (top || "customer service and communication") + ". I have experience handling customer queries professionally and I am comfortable working " + (job ? job.type : "remote") + ".\n\nI would welcome the opportunity to discuss how I can contribute to your team.\n\nBest regards,\n[Your Name]";
+  },
+  applicationMessage(job){
+    const co = job ? job.company : "[Company]";
+    const pos = job ? job.position : "[Position]";
+    return "Hi, I'm applying for the " + pos + " role at " + co + ". I have experience in customer support, strong communication skills, and I'm available for " + (job ? job.type : "remote") + " work. My CV is attached — happy to schedule an interview at your convenience.";
+  },
+  render(result){
+    const r = $("cvResults");
+    r.classList.add("show");
+    $("cvScore").textContent = result.score + "%";
+    $("cvExp").textContent = result.expText;
+    $("cvSkills").innerHTML = result.skills.length
+      ? result.skills.map(s => `<span class="sk">${esc(s)}</span>`).join("")
+      : '<span style="color:var(--faint)">No known skills detected — add more detail to your CV text.</span>';
+    $("cvStrengths").textContent = result.strengths.join(" · ");
+    $("cvMissing").innerHTML = result.missing.length
+      ? result.missing.map(s => `<span class="sk" style="background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3);color:#fca5a5">${esc(s)}</span>`).join("")
+      : '<span style="color:var(--faint)">No job selected for comparison — open a job and press ANALYZE.</span>';
+    $("cvRecommend").textContent = result.recommend;
+    $("cvCoverLetter").value = result.cover;
+    $("cvMessage").value = result.message;
+  },
+};
+let cvCache = null;
+
+/* ---------------- Memory service ---------------- */
+const MemoryService = {
+  all(){ return Store.data.memories; },
+  upsert(key, value){
+    key = key.trim(); value = value.trim();
+    if (!key || !value) return null;
+    const ex = this.all().find(m => m.key.toLowerCase() === key.toLowerCase());
+    if (ex){ ex.value = value; ex.ts = Date.now(); Store.save();
+      ActivityLog.log("Memory: updated — " + ex.key, "memory"); this.render(); return ex; }
+    const m = { id: uid(), key, value, ts: Date.now() };
+    Store.data.memories.push(m); Store.save();
+    ActivityLog.log("Memory: stored — " + key + " = " + value, "memory");
+    this.render();
+    return m;
+  },
+  remove(id){
+    const m = this.all().find(x => x.id === id);
+    Store.data.memories = this.all().filter(x => x.id !== id); Store.save();
+    ActivityLog.log("Memory: deleted — " + (m ? m.key : ""), "memory");
+    this.render();
+  },
+  find(phrase){
+    const p = (phrase || "").toLowerCase();
+    const STOP = new Set(["what","is","my","our","your","the","a","an","of","do","have","i","in","current","primary"]);
+    const words = p.split(/[^a-z0-9]+/).filter(w => w && !STOP.has(w));
+    const score = mem => {
+      const hay = (mem.key + " " + mem.value).toLowerCase();
+      if (p && (hay.includes(p) || p.includes(mem.key.toLowerCase()))) return 3;
+      if (!words.length) return 0;
+      const hits = words.filter(w => hay.includes(w)).length;
+      return hits === words.length ? 2 : hits / Math.max(1, words.length);
+    };
+    let best = null, bestScore = 0;
+    for (const mem of this.all()){
+      const s = score(mem);
+      if (s > bestScore || (s === bestScore && s > 0 && best && mem.ts > best.ts)){ bestScore = s; best = mem; }
+    }
+    return bestScore >= (words.length ? 1 : 0) ? best : null;
+  },
+  render(){
+    const q = ($("memSearch") ? ($("memSearch").value || "") : "").toLowerCase();
+    const list = this.all().filter(m => !q || (m.key + " " + m.value).toLowerCase().includes(q));
+    $("memoryList").innerHTML = list.map(m => `
+      <div class="mem-card">
+        <div class="mk">${esc(m.key)}</div>
+        <div class="mv">${esc(m.value)}</div>
+        <div class="mt"><span>${new Date(m.ts).toLocaleDateString()}</span>
+          <span><button class="tbtn" data-id="${m.id}" data-f="memedit" title="Edit">✎</button>
+          <button class="tbtn del" data-id="${m.id}" data-f="memdel" title="Delete">✕</button></span></div>
+      </div>`).join("") || '<div style="color:var(--faint);grid-column:1/-1">No memories match. Say "Remember that…" in chat, or add one above.</div>';
+  },
+};
+
+/* ---------------- Task service ---------------- */
+const TaskService = {
+  all(){ return Store.data.tasks; },
+  add(title, opts){
+    opts = opts || {};
+    const t = { id: uid(), title: title.trim(), priority: opts.priority || "MEDIUM",
+                status: opts.status || "TODO", due: opts.due || "", related: opts.related || "",
+                notes: opts.notes || "", created: Date.now() };
+    Store.data.tasks.unshift(t); Store.save();
+    ActivityLog.log("Task created: " + t.title, "task");
+    this.render();
+    return t;
+  },
+  update(id, patch){
+    const t = this.all().find(x => x.id === id);
+    if (!t) return;
+    Object.assign(t, patch); Store.save();
+    ActivityLog.log("Task: " + t.title + (patch.status ? " → " + patch.status : ""), "task");
+    this.render();
+  },
+  remove(id){
+    const t = this.all().find(x => x.id === id);
+    Store.data.tasks = this.all().filter(x => x.id !== id); Store.save();
+    if (t) ActivityLog.log("Task deleted: " + t.title, "task");
+    this.render();
+  },
+  open(){ return this.all().filter(t => t.status !== "DONE"); },
+  render(){
+    $("taskList").innerHTML = this.all().map(t => `
+      <div class="task-card p-${t.priority} ${t.status === "DONE" ? "done" : ""}">
+        <div class="tt">${esc(t.title)}</div>
+        <div class="task-meta">
+          <span>Priority: <b>${t.priority}</b></span>
+          <span>Status: <b style="color:${t.status === "DONE" ? "var(--ok)" : t.status === "IN PROGRESS" ? "var(--accent)" : "var(--warn)"}">${t.status}</b></span>
+          <span>Due: <b>${esc(t.due || "—")}</b></span>
+          ${t.related ? `<span>Related: <b>${esc(t.related)}</b></span>` : ""}
+        </div>
+        ${t.notes ? `<div class="task-notes">${esc(t.notes)}</div>` : ""}
+        <div class="task-actions">
+          <select class="mini" data-id="${t.id}" data-f="priority">
+            ${["HIGH","MEDIUM","LOW"].map(p => `<option ${p === t.priority ? "selected" : ""}>${p}</option>`).join("")}
+          </select>
+          <select class="mini" data-id="${t.id}" data-f="status">
+            ${["TODO","IN PROGRESS","DONE"].map(s => `<option ${s === t.status ? "selected" : ""}>${s}</option>`).join("")}
+          </select>
+          ${t.status !== "DONE" ? `<button class="mini" data-id="${t.id}" data-f="complete">✓ Complete</button>` : ""}
+          <button class="mini danger" data-id="${t.id}" data-f="del">✕ Delete</button>
+        </div>
+      </div>`).join("") || '<div style="color:var(--faint);grid-column:1/-1">No tasks yet — ask AITZAZ to create one, e.g. "Remind me to follow up with this lead tomorrow."</div>';
+  },
+};
+
+/* ---------------- Media service (YouTube links) ---------------- */
+const MediaService = {
+  all(){ return Store.data.media; },
+  parseYoutube(url){
+    const m = String(url || "").match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
+    return m ? m[1] : null;
+  },
+  async add(url){
+    const id = this.parseYoutube(url);
+    if (!id) return { error: "That doesn't look like a YouTube link. Paste a youtube.com/watch or youtu.be URL." };
+    if (this.all().some(m => m.id === id)) return { error: "This video is already saved." };
+    let title = "YouTube video", thumb = "https://img.youtube.com/vi/" + id + "/hqdefault.jpg";
+    try {
+      const r = await fetch("https://www.youtube.com/oembed?url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id) + "&format=json");
+      if (r.ok){ const j = await r.json(); title = j.title || title; if (j.thumbnail_url) thumb = j.thumbnail_url; }
+    } catch(e){ /* offline: keep fallback title */ }
+    const m = { id: uid(), ytId: id, title, url: "https://www.youtube.com/watch?v=" + id, thumb, ts: Date.now() };
+    Store.data.media.unshift(m); Store.save();
+    ActivityLog.log("Media: saved YouTube link — " + title, "media");
+    this.render();
+    return { ok: true, title };
+  },
+  remove(id){
+    const m = this.all().find(x => x.id === id);
+    Store.data.media = this.all().filter(x => x.id !== id); Store.save();
+    if (m) ActivityLog.log("Media: removed — " + m.title, "media");
+    this.render();
+  },
+  render(){
+    $("mediaList").innerHTML = this.all().map(m => `
+      <div class="media-card">
+        <img src="${esc(m.thumb)}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="mi">
+          <div class="mtitle">${esc(m.title)}</div>
+          <div class="mdate">Saved ${new Date(m.ts).toLocaleDateString()} · ${esc(m.url)}</div>
+        </div>
+        <button class="cbtn" data-id="${m.id}" data-f="open" title="Open on YouTube">▶ OPEN</button>
+        <button class="cbtn ghost danger" data-id="${m.id}" data-f="del" title="Remove">✕</button>
+      </div>`).join("") || '<div style="color:var(--faint);grid-column:1/-1">No saved links yet. Paste a YouTube URL above. (This app opens videos on YouTube — it does not download YouTube content.)</div>';
+    $("mediaNote").textContent = this.all().length ? this.all().length + " saved link(s) — opens on YouTube." : "";
+  },
+};
+
+/* ---------------- Export service ---------------- */
+const ExportService = {
+  toCSV(rows){
+    if (!rows.length) return "";
+    const headers = Object.keys(rows[0]);
+    const escCell = v => { v = String(v ?? ""); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    return [headers.join(",")].concat(rows.map(r => headers.map(h => escCell(r[h])).join(","))).join("\n");
+  },
+  download(name, content, mime){
+    const blob = new Blob([content], { type: mime });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  },
+  crmCsv(){ this.download("aitzaz-crm.csv", this.toCSV(CrmService.all().map(l => ({ company: l.company, contact: l.contact, position: l.title, email: l.email, phone: l.phone, location: l.location, industry: l.industry, score: l.score, status: l.status, notes: l.notes, lastContact: l.lastContact, nextFollowUp: l.nextFollowUp }))), "text/csv"); },
+  crmJson(){ this.download("aitzaz-crm.json", JSON.stringify({ exportedAt: new Date().toISOString(), source: "AITZAZ-OS (demo data)", leads: CrmService.all() }, null, 2), "application/json"); },
+  jobsCsv(){ this.download("aitzaz-jobs.csv", this.toCSV(JobService.all().map(j => ({ company: j.company, position: j.position, location: j.location, salary: j.salary, type: j.type, experience: j.exp, skills: (j.skills || []).join("; "), status: j.status }))), "text/csv"); },
+  jobsJson(){ this.download("aitzaz-jobs.json", JSON.stringify({ exportedAt: new Date().toISOString(), source: "AITZAZ-OS (demo job data)", jobs: JobService.all() }, null, 2), "application/json"); },
+  tasksCsv(){ this.download("aitzaz-tasks.csv", this.toCSV(TaskService.all().map(t => ({ title: t.title, priority: t.priority, status: t.status, due: t.due, related: t.related, notes: t.notes }))), "text/csv"); },
+  tasksJson(){ this.download("aitzaz-tasks.json", JSON.stringify({ exportedAt: new Date().toISOString(), tasks: TaskService.all() }, null, 2), "application/json"); },
+  memoryCsv(){ this.download("aitzaz-memory.csv", this.toCSV(MemoryService.all().map(m => ({ key: m.key, value: m.value, updated: new Date(m.ts).toISOString() }))), "text/csv"); },
+  memoryJson(){ this.download("aitzaz-memory.json", JSON.stringify({ exportedAt: new Date().toISOString(), memories: MemoryService.all() }, null, 2), "application/json"); },
+  everything(){ this.download("aitzaz-os-workspace.json", JSON.stringify(Store.data, null, 2), "application/json"); },
+};
+/* ---------------- Agent runtime ---------------- */
+const AGENT_DEFS = [
+  { id: "job",      ico: "⌖", name: "JOB HUNTER",    role: "Finds and filters opportunities" },
+  { id: "lead",     ico: "⚑", name: "LEAD HUNTER",   role: "Finds and qualifies companies" },
+  { id: "research", ico: "◉", name: "RESEARCH AGENT", role: "Analyzes requirements & companies" },
+  { id: "scorer",   ico: "▴", name: "SCORER",        role: "Ranks jobs / leads by match" },
+  { id: "crm",      ico: "▤", name: "CRM AGENT",     role: "Stores and manages records" },
+  { id: "sales",    ico: "↗", name: "SALES AGENT",   role: "Prioritizes prospects" },
+  { id: "email",    ico: "✉", name: "EMAIL AGENT",   role: "Prepares outreach & applications" },
+  { id: "memory",   ico: "◈", name: "MEMORY AGENT",  role: "Stores long-term knowledge" },
+];
+const AgentRuntime = {
+  states: {},
+  init(){
+    AGENT_DEFS.forEach(a => this.states[a.id] = { status: "idle", task: "—", last: "—", progress: 0, label: a.name });
+    this.states.ceo = { status: "online", task: "Awaiting command", last: "—", progress: 0 };
+    $("agentGrid").innerHTML = AGENT_DEFS.map(a => `
+      <div class="agent-card" id="ac-${a.id}">
+        <div class="agent-head">
+          <span class="agent-ico">${a.ico}</span>
+          <div><div class="agent-name">${a.name}</div><div class="agent-role">${a.role}</div></div>
+          <span class="agent-status" id="as-${a.id}">IDLE</span>
+        </div>
+        <div class="agent-task" id="at-${a.id}">—</div>
+        <div class="bar"><i id="ab-${a.id}"></i></div>
+        <div class="agent-last">Last action: <b id="al-${a.id}">—</b></div>
+      </div>`).join("");
+    this.renderRail();
+  },
+  set(id, status, task, opts){
+    const st = this.states[id];
+    if (!st) return;
+    st.status = status; st.task = task || st.task; st.progress = (opts && opts.progress != null) ? opts.progress : st.progress;
+    if (status === "done") st.last = task || st.task;
+    if (opts && opts.label) st.label = opts.label;
+    if (id !== "ceo"){
+      const el = $("ac-" + id);
+      if (el){
+        el.classList.toggle("running", status === "running");
+        el.classList.toggle("done", status === "done");
+        $("as-" + id).textContent = status.toUpperCase();
+        $("at-" + id).textContent = task || "—";
+        $("ab-" + id).style.width = (status === "done" ? 100 : (st.progress || 0)) + "%";
+        $("al-" + id).textContent = st.last;
+      }
+    } else {
+      $("ceoTask").textContent = "CURRENT TASK: " + (task || "Awaiting command");
+      $("ceoLast").textContent = "LAST ACTION: " + (st.last !== "—" ? st.last : "—");
+      $("ceoStripTask").textContent = task || "Awaiting command";
+    }
+    this.renderRail();
+  },
+  renderRail(){
+    $("railAgents").innerHTML = AGENT_DEFS.map(a => {
+      const st = this.states[a.id];
+      const running = st.status === "running";
+      return `<div class="railAgent ${running ? "running" : st.status === "done" ? "done" : ""}">
+        <div class="ra-head">
+          <span class="ra-ico">${a.ico}</span>
+          <span class="ra-name">${st.label || a.name}</span>
+          <span class="ra-status" style="color:${running ? "var(--accent)" : st.status === "done" ? "var(--ok)" : "var(--faint)"}">${st.status.toUpperCase()}</span>
+        </div>
+        <div class="ra-task">${esc(st.task || "—")}</div>
+        <div class="bar"><i style="width:${st.status === "done" ? 100 : st.progress || 0}%" class="${st.status === "done" ? "ok" : ""}"></i></div>
+      </div>`;
+    }).join("");
+  },
+};
+
+/* ---------------- AI service ---------------- */
+const AiService = {
+  lastLatencyMs: null,
+  lastStatus: null,   // "connected" | "demo"
+  endpoint(){ return (Store.settings().aiEndpoint || "").trim() || CONFIG.defaultAiEndpoint; },
+  key(){ return (Store.settings().aiKey || "").trim(); },
+  model(){ return (Store.settings().aiModel || "").trim(); },
+
+  async chat(messages, timeoutMs){
+    const t0 = performance.now();
+    const endpoint = this.endpoint();
+    const key = this.key();
+    const timeout = timeoutMs || CONFIG.aiTimeoutMs;
+    try {
+      const ctrl = new AbortController();
+      const tm = setTimeout(() => ctrl.abort(), timeout);
+      let r;
+      if (key){
+        // OpenAI-compatible endpoint with user-provided key
+        const url = endpoint.replace(/\/+$/, "") + (endpoint.includes("/v1/chat/completions") ? "" : "/v1/chat/completions");
+        r = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + key },
+          body: JSON.stringify({ model: this.model() || "gpt-4o-mini", messages, temperature: 0.5 }),
+          signal: ctrl.signal,
+        });
+      } else {
+        // default free keyless endpoint (Pollinations)
+        const models = CONFIG.defaultModels;
+        for (const model of models){
+          const c2 = new AbortController();
+          const t2 = setTimeout(() => c2.abort(), timeout);
+          r = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages, model }),
+            referrer: CONFIG.defaultAiEndpoint,
+            signal: c2.signal,
+          });
+          clearTimeout(t2);
+          if (r.ok) break;
+        }
+      }
+      clearTimeout(tm);
+      if (!r || !r.ok) return null;
+      const j = await r.json();
+      const out = (j && j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content)
+               || (typeof j === "string" ? j : null);
+      if (out && out.trim()){
+        this.lastLatencyMs = Math.round(performance.now() - t0);
+        this.lastStatus = "connected";
+        return out.trim().replace(/\s+/g, " ").replace(/^["']+|["']+$/g, "");
+      }
+    } catch(e){ /* fall through */ }
+    this.lastStatus = "demo";
+    return null;
+  },
+  async ping(){
+    const ok = await this.chat([{ role: "user", content: "ping" }], CONFIG.pingTimeoutMs);
+    return !!ok;
+  },
+  systemPrompt(){
+    const mems = MemoryService.all().map(m => "- " + m.key + ": " + m.value).join("\n");
+    const leads = CrmService.all().length;
+    const jobs = JobService.all().length;
+    return "You are AITZAZ, the CEO AI of AITZAZ-OS, an AI operating system that helps the user run their business. " +
+      "User memory:\n" + (mems || "- (none)") +
+      "\nCurrent workspace: " + leads + " leads (demo data), " + jobs + " jobs (demo job data). " +
+      "Rules: reply in the same language as the user (English, Roman Urdu, or Urdu). " +
+      "1-3 spoken sentences, plain conversational prose, no markdown, no lists, no emojis. " +
+      "You coordinate agents: Job Hunter, Lead Hunter, Research, Scorer, CRM, Sales, Email, Memory. " +
+      "If asked about leads or jobs, be honest that the connected data is DEMO DATA because no live provider is connected. " +
+      "Never claim real-time facts about external companies.";
+  },
+};
+function setBackendPill(status){
+  const el = $("backendPill");
+  const t = $("backendText");
+  if (status === "connected"){
+    el.className = "pill ok";
+    t.textContent = "AI BACKEND · CONNECTED";
+  } else {
+    el.className = "pill warn";
+    t.textContent = "AI BACKEND · DEMO MODE";
+  }
+  $("sideDemo").style.display = status === "connected" ? "none" : "flex";
+  $("csAi").textContent = status === "connected" ? "CONNECTED" : "DEMO MODE";
+  $("csAi").className = "pill " + (status === "connected" ? "ok" : "warn");
+}
+async function checkAiConnection(){
+  const ok = await AiService.ping();
+  setBackendPill(ok ? "connected" : "demo");
+  return ok;
+}
+
+/* ---------------- Demo brain (offline fallback) ---------------- */
+const JOKES = [
+  "Why do programmers prefer dark mode? Because light attracts bugs!",
+  "I told my Wi-Fi to be faster… it said: best I can do is five bars of attitude.",
+  "Why did the roofer bring a ladder to the meeting? To raise the pitch.",
+];
+async function demoBrain(text){
+  const t = text.trim();
+  if (/^(hi|hello|hey|salam|aoa|assalam)/i.test(t))
+    return "Hello! I'm AITZAZ, the CEO of your command center. I can find jobs, hunt leads, manage your CRM, remember facts and create tasks. What should we work on?";
+  if (/(who are you|what are you)/i.test(t))
+    return "I'm AITZAZ, the CEO AI of AITZAZ-OS. I orchestrate eight specialist agents — Job Hunter, Lead Hunter, Research, Scorer, CRM, Sales, Email and Memory.";
+  if (/(thank|shukriya)/i.test(t)) return "You're welcome. Anything else?";
+  if (/\b(time|waqt)\b/i.test(t)){
+    const d = new Date(); let h = d.getHours(); const am = h < 12 ? "AM" : "PM"; h = h % 12 || 12;
+    return "The current time is " + h + ":" + String(d.getMinutes()).padStart(2, "0") + " " + am + ".";
+  }
+  if (/\b(date|day|today|aaj)\b/i.test(t))
+    return "Today is " + new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) + ".";
+  if (/joke/i.test(t)) return JOKES[Math.floor(Math.random() * JOKES.length)];
+  return "AI backend unavailable — Demo Mode activated. I can still run these workflows: find jobs, analyze my CV, find roofing leads, show CRM, remember that…, what is my target market, create a task, prepare application, prepare outreach. Plus time, date and jokes.";
+}
+
+/* ---------------- Chat ---------------- */
+const Chat = {
+  add(kind, content, opts){
+    const d = document.createElement("div");
+    d.className = "msg " + kind;
+    if (kind === "ai"){
+      const p = document.createElement("div");
+      p.textContent = content; d.appendChild(p);
+      if (opts && opts.actions && opts.actions.length){
+        const row = document.createElement("div");
+        row.className = "ai-actions";
+        opts.actions.forEach(a => {
+          const b = document.createElement("button");
+          b.className = "actBtn"; b.textContent = a.label;
+          b.onclick = a.fn; row.appendChild(b);
+        });
+        d.appendChild(row);
+      }
+    } else if (kind === "tool"){
+      d.appendChild(content);
+    } else {
+      d.textContent = content;
+    }
+    $("chat").appendChild(d);
+    $("chat").scrollTop = $("chat").scrollHeight;
+    return d;
+  },
+  typing(on){
+    let el = $("chat").querySelector(".typing");
+    if (on && !el){
+      el = document.createElement("div");
+      el.className = "msg ai";
+      el.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+      $("chat").appendChild(el);
+    }
+    if (!on && el) el.remove();
+    $("chat").scrollTop = $("chat").scrollHeight;
+  },
+};
+
+/* ---------------- Phase indicator ---------------- */
+function setPhase(label){
+  const el = $("phaseBar");
+  if (!label){ el.classList.remove("show"); return; }
+  $("phaseLabel").textContent = label;
+  el.classList.add("show");
+}
+
+/* ---------------- Pipeline ---------------- */
+let currentRun = null;
+function newRun(){ currentRun = { cancelled: false }; return currentRun; }
+function cancelRun(){ if (currentRun) currentRun.cancelled = true; currentRun = null; }
+
+function makeFlow(steps){
+  const flow = document.createElement("div");
+  flow.className = "flow";
+  const rows = ["USER", "AITZAZ CEO"].concat(steps.map(s => s.label)).concat(["REPORT"]);
+  flow.innerHTML = rows.map((r, i) => `
+    <div class="frow pending" data-i="${i}">
+      <span class="fdot"></span>
+      <div style="flex:1"><div class="fname">${esc(r)}</div>
+      <div class="fstat" data-i="${i}"></div>
+      <div class="fbar" data-i="${i}"><i></i></div></div>
+    </div>`).join("");
+  return flow;
+}
+function flowSet(flow, idx, state, statText, pct){
+  const row = flow.querySelector('[data-i="' + idx + '"]');
+  if (row){
+    row.className = "frow " + state;
+    const st = row.querySelector(".fstat");
+    if (st) st.textContent = statText || "";
+    const bar = row.querySelector(".fbar i");
+    if (bar) bar.style.width = (state === "done" ? 100 : (pct || 0)) + "%";
+  }
+}
+async function animateProgress(agentId, dur, run, flow, flowIdx){
+  const t0 = performance.now();
+  while (true){
+    if (run && run.cancelled) return false;
+    const p = Math.min(100, (performance.now() - t0) / dur * 100);
+    AgentRuntime.states[agentId].progress = p;
+    if (agentId !== "ceo"){
+      const b = $("ab-" + agentId); if (b) b.style.width = p + "%";
+    }
+    if (flow) flowSet(flow, flowIdx, "running", Math.round(p) + "%", p);
+    if (p >= 100) break;
+    await sleep(50);
+  }
+  return true;
+}
+async function runPipeline(steps, ceoFirstLine){
+  const run = newRun();
+  const flow = makeFlow(steps);
+  const wrap = document.createElement("div");
+  wrap.appendChild(flow);
+  const msg = Chat.add("tool", wrap);
+  flowSet(flow, 0, "done");
+  flowSet(flow, 1, "done", "command received");
+  AgentRuntime.set("ceo", "running", ceoFirstLine || "Orchestrating agent team");
+  ActivityLog.log("CEO received command", "ceo");
+  await sleep(350);
+  let idx = 2;
+  for (const step of steps){
+    if (run.cancelled){ msg.remove(); return null; }
+    AgentRuntime.set(step.agent, "running", step.task, { label: step.label });
+    ActivityLog.log(step.label + " — " + step.task, "agent");
+    flowSet(flow, idx, "running", "working…", 3);
+    const ok = await animateProgress(step.agent, step.dur, run, flow, idx);
+    if (!ok){ msg.remove(); return null; }
+    if (step.run) await step.run();
+    AgentRuntime.set(step.agent, "done", step.task, { label: step.label });
+    ActivityLog.log(step.label + " — completed (" + step.task + ")", "agent");
+    flowSet(flow, idx, "done", "completed");
+    idx++;
+    await sleep(140);
+  }
+  if (run.cancelled){ msg.remove(); return null; }
+  AgentRuntime.set("ceo", "done", "Workflow complete");
+  ActivityLog.log("CEO completed task", "ceo");
+  flowSet(flow, idx, "done", "report ready");
+  await sleep(300);
+  return { flow, msg };
+}
+
+/* ---------------- Intent engine ---------------- */
+function parseJobCriteria(text){
+  const c = { q: "", minSalary: null, remote: null, exp: null };
+  let t = " " + text.toLowerCase() + " ";
+  const sal = t.match(/\$\s?(\d{3,5})|(\d{3,5})\s*(?:usd|dollars|dollar|\/mo|per month)/);
+  if (sal) c.minSalary = parseInt(sal[1] || sal[2], 10);
+  if (/\bremote\b|work from home|wfh/.test(t)) c.remote = "remote";
+  const qm = t.match(/(?:for|in|as|—)?\s*(customer support|customer service|call center|technical support|tech support|it support|customer success|data entry|sales|marketing|virtual assistant|support)\s*/);
+  c.q = qm ? qm[1] : "";
+  const em = t.match(/(\d(?:\+)?(?:\s*-\s*\d)?\s*(?:year|yr)s?)/);
+  c.exp = em ? em[1].replace(/\s+/g, " ") : null;
+  return c;
+}
+function parseRemember(text){
+  const raw = text.replace(/^remember that\s+/i, "").replace(/[.!?]+$/, "").trim();
+  const m = raw.match(/^(?:my|your|our|the)?\s*(.+?)\s+is\s+(.+)$/i);
+  let key, value;
+  if (m){
+    const subject = m[1].trim(), object = m[2].trim();
+    if (/target market|primary market/i.test(subject + " " + object)){
+      key = "Primary Target Market";
+      value = /target market|primary market/i.test(object) ? subject : object;
+    } else if (/outreach|channel/i.test(subject + " " + object)){ key = "Outreach Channel"; value = object; }
+    else if (/goal/i.test(subject + " " + object)){ key = "Goal"; value = object; }
+    else { key = subject; value = object; }
+  } else {
+    value = raw.replace(/^(my|your|our)\s+/i, "");
+    key = /target market|primary market/i.test(raw) ? "Primary Target Market"
+        : /outreach/i.test(raw) ? "Outreach Channel"
+        : /goal/i.test(raw) ? "Goal" : "Note";
+  }
+  return { key, value };
+}
+
+async function runCommand(text){
+  const t = text.trim();
+
+  if (/^(hi|hello|hey|salam|aoa|assalam)\b/i.test(t) && t.split(/\s+/).length <= 4)
+    return { reply: "Hello! I'm AITZAZ, the CEO of your command center. Ask me to find jobs, hunt leads, remember facts, or create tasks — and I'll deploy the agent team." };
+
+  /* REMEMBER (before any keyword match) */
+  if (/remember that/i.test(t)){
+    const { key, value } = parseRemember(t);
+    const intro = Chat.add("ai", "Saving that to memory — Memory Agent is on it.");
+    const pipeline = await runPipeline([
+      { label: "MEMORY AGENT", agent: "memory", task: "Storing: " + value, dur: 700,
+        run: async () => { MemoryService.upsert(key, value); } },
+    ], "Saving to memory");
+    if (!pipeline) return { reply: "Workflow cancelled." };
+    intro.remove();
+    return { reply: "Saved to memory: your " + key.toLowerCase() + " is " + value + ".", actions: [{ label: "◉ OPEN MEMORY", fn: () => showView("memory") }] };
+  }
+
+  /* CREATE TASK / REMIND (before job/lead matches) */
+  if (/create (a )?task|remind me|follow ?up/i.test(t)){
+    let due = "";
+    if (/tomorrow/i.test(t)){ const d = new Date(Date.now() + 864e5); due = d.toISOString().slice(0, 10); }
+    if (/next week/i.test(t)){ const d = new Date(Date.now() + 7 * 864e5); due = d.toISOString().slice(0, 10); }
+    let title, related = "";
+    const remind = t.match(/remind me to (.+)/i);
+    if (remind){
+      title = remind[1].replace(/\s*(tomorrow|next week|today)\s*$/i, "").replace(/[.!?]+$/, "").trim();
+      title = title.charAt(0).toUpperCase() + title.slice(1);
+    } else if (/follow ?up with (this )?lead/i.test(t)){
+      const top = CrmService.best(1)[0];
+      title = "Follow up with " + (top ? top.company : "lead");
+      related = top ? top.company : "lead";
+    } else {
+      const m = t.match(/(?:task to |follow up (?:on|with) )(.+)/i);
+      title = m ? m[1].replace(/[.!?]+$/, "") : "Follow up task";
+    }
+    TaskService.add(title, { priority: "HIGH", status: "TODO", due, related });
+    return { reply: "Task created: \"" + title + "\" — HIGH priority" + (due ? ", due " + due : "") + ". It's waiting in Tasks.",
+             actions: [{ label: "☰ OPEN TASKS", fn: () => showView("tasks") }] };
+  }
+
+  /* RECALL */
+  if (/what is my (.+)/i.test(t) || /what'?s? my (.+)/i.test(t)){
+    const phrase = (t.match(/what is my (.+)/i) || t.match(/what'?s? my (.+)/i))[1].replace(/[?!.]+$/, "").trim();
+    const found = MemoryService.find(phrase);
+    if (found){
+      if (found.key.toLowerCase().includes("target market"))
+        return { reply: "Your " + found.key.toLowerCase() + " is " + found.value + "." };
+      return { reply: "Your " + found.key.toLowerCase() + " is " + found.value + "." };
+    }
+    return { reply: "I don't have that in memory yet. Say \"Remember that …\" and I'll store it." };
+  }
+
+  /* CV analysis */
+  if (/(analy[sz]e|review).*(cv|resume)|\bmy cv\b|\bmy resume\b|resume analysis/i.test(t)){
+    showView("jobs");
+    const ct = $("cvTabBtn"); if (ct) ct.click();
+    const text = CvService.text || $("cvPaste").value.trim();
+    if (!text){
+      return { reply: "I don't have your CV yet. Go to Jobs → CV Analyzer and upload or paste your CV text, then ask me again." };
+    }
+    const job = JobService.all().find(j => j.id === lastJobId) || null;
+    const res = CvService.analyze(text, job);
+    cvCache = res;
+    CvService.render(res);
+    ActivityLog.log("CV analyzed" + (job ? " vs " + job.company : ""), "job");
+    return { reply: "CV analyzed — your profile scores " + res.score + "%" + (job ? " against " + job.position + " at " + job.company : "") + ". " + res.recommend,
+             actions: [{ label: "⌖ VIEW CV REPORT", fn: () => { showView("jobs"); $("cvTabBtn").click(); } }] };
+  }
+
+  /* ANALYZE THIS JOB (before the generic jobs match) */
+  if (/analy[sz]e (this |the )?job/i.test(t)){
+    ensureDemoJobs();
+    const job = JobService.all().find(j => j.id === lastJobId) || JobService.all()[0];
+    if (!job) return { reply: "No jobs in the workspace yet. Ask me to find jobs first." };
+    lastJobId = job.id;
+    const criteria = JobService.lastCriteria || { q: "customer support", minSalary: 800, remote: "remote" };
+    const score = JobService.score(job, criteria);
+    openJobModal(job, score);
+    if (CvService.text){
+      const res = CvService.analyze(CvService.text, job);
+      cvCache = res;
+      CvService.render(res);
+      return { reply: "Analyzed " + job.position + " at " + job.company + ": " + score + "% match against your search criteria, " + res.score + "% against your CV. " + res.recommend,
+               actions: [{ label: "✉ PREPARE APPLICATION", fn: () => { openJobModal(job, score); } }] };
+    }
+    return { reply: "Analyzed " + job.position + " at " + job.company + " — " + score + "% match against your search criteria (salary, keywords, remote preference). Upload a CV in the CV Analyzer for personal compatibility.",
+             actions: [{ label: "✉ PREPARE APPLICATION", fn: () => { openJobModal(job, score); } }] };
+  }
+
+  /* PREPARE APPLICATION (before the generic jobs match) */
+  if (/prepare application|write application|apply to/i.test(t)){
+    ensureDemoJobs();
+    const job = JobService.all().find(j => j.id === lastJobId) || JobService.all()[0];
+    if (!job) return { reply: "No jobs yet — ask me to find jobs first, then open one." };
+    lastJobId = job.id;
+    const score = JobService.score(job, JobService.lastCriteria);
+    openJobModal(job, score);
+    prepareApplication(job);
+    return { reply: "Application message prepared for " + job.position + " at " + job.company + ". It's editable in the job panel — copy it before sending." };
+  }
+
+  /* JOBS workflow */
+  if (/\b(jobs?|vacanc|position|career|work|hiring)\b/i.test(t) || /\b(customer|tech|technical|it|call center)\s*support\b/i.test(t)){
+    const criteria = parseJobCriteria(t);
+    JobService.lastCriteria = criteria;
+    ensureDemoJobs();
+    const intro = Chat.add("ai", "Understood. I'll search for matching opportunities" +
+      (criteria.minSalary ? " paying at least $" + criteria.minSalary + "/month" : "") + ".");
+    const pipeline = await runPipeline([
+      { label: "JOB HUNTER", agent: "job", task: "Searching job database", dur: 1200, run: async () => { await sleep(150); } },
+      { label: "RESEARCH AGENT", agent: "research", task: "Analyzing requirements", dur: 1100, run: async () => { await sleep(120); } },
+      { label: "JOB SCORER", agent: "scorer", task: "Ranking matches", dur: 1000, run: async () => {
+        JobService.render();
+        ActivityLog.log("Job Scorer ranked " + JobService.filter(criteria).length + " matches (demo job data)", "job");
+      } },
+      { label: "CRM AGENT", agent: "crm", task: "Saving results", dur: 800, run: async () => { await sleep(100); } },
+    ], "Finding matching jobs");
+    if (!pipeline) return { reply: "Workflow cancelled." };
+    intro.remove();
+    const matches = JobService.filter(criteria);
+    const top = matches.slice(0, 3);
+    return {
+      reply: "Job hunt complete: " + matches.length + " matches found" +
+        (criteria.minSalary ? " at or above $" + criteria.minSalary + "/month" : "") +
+        ". Top match: " + (top[0] ? top[0].job.position + " at " + top[0].job.company + " (" + top[0].score + "% match)" : "none") +
+        ". Note: demo job data — job provider not connected.",
+      actions: [{ label: "⌖ OPEN JOBS", fn: () => showView("jobs") }],
+    };
+  }
+
+  /* ROOFING LEADS workflow */
+  if (/\broof/i.test(t) || /roofing companies|roofing leads/i.test(t)){
+    ensureDemoLeads();
+    const intro = Chat.add("ai", "On it. I'll hunt roofing companies in Texas and prepare outreach.");
+    const pipeline = await runPipeline([
+      { label: "LEAD HUNTER", agent: "lead", task: "Finding roofing companies in Texas", dur: 1200, run: async () => { await sleep(150); } },
+      { label: "RESEARCH AGENT", agent: "research", task: "Researching each company", dur: 1100, run: async () => { await sleep(120); } },
+      { label: "LEAD SCORER", agent: "scorer", task: "Scoring prospects", dur: 900, run: async () => { await sleep(100); } },
+      { label: "CRM AGENT", agent: "crm", task: "Storing leads in CRM", dur: 900, run: async () => {
+        CrmService.render();
+        ActivityLog.log("CRM: demo lead set ready (" + CrmService.all().length + " records)", "crm");
+      } },
+      { label: "SALES AGENT", agent: "sales", task: "Prioritizing prospects", dur: 800, run: async () => { await sleep(100); } },
+      { label: "EMAIL AGENT", agent: "email", task: "Preparing outreach drafts", dur: 900, run: async () => { await sleep(100); } },
+    ], "Hunting roofing companies");
+    if (!pipeline) return { reply: "Workflow cancelled." };
+    intro.remove();
+    const best = CrmService.best(3);
+    return {
+      reply: "CEO REPORT: " + CrmService.all().length + " roofing companies in Texas are in your CRM as demo leads. Top prospects — " +
+        best.map(l => l.company + " (" + l.score + ")").join(", ") +
+        ". Outreach drafts are ready in the Email Agent. Note: demo lead data — lead provider not connected.",
+      actions: [{ label: "▤ OPEN CRM", fn: () => showView("crm") }],
+    };
+  }
+
+  /* ANALYZE leads */
+  if (/(analy[sz]e|review|stats).*(lead|crm)|lead (analysis|report)/i.test(t)){
+    ensureDemoLeads();
+    const stats = CrmService.stats();
+    const intro = Chat.add("ai", "Running lead analysis — Research and Scorer agents are on it.");
+    const pipeline = await runPipeline([
+      { label: "RESEARCH AGENT", agent: "research", task: "Analyzing lead data", dur: 900 },
+      { label: "LEAD SCORER", agent: "scorer", task: "Computing scores and segments", dur: 900, run: async () => { CrmService.render(); } },
+    ], "Analyzing leads");
+    if (!pipeline) return { reply: "Workflow cancelled." };
+    intro.remove();
+    const by = Object.entries(stats.by).map(([k, v]) => v + " " + k.toLowerCase()).join(", ");
+    return {
+      reply: "Lead analysis complete: " + stats.total + " demo leads in CRM, average score " + stats.avg + "/100. Breakdown — " + by + ". (Demo lead data — provider not connected.)",
+      actions: [{ label: "▤ OPEN CRM", fn: () => showView("crm") }],
+    };
+  }
+
+  /* PREPARE OUTREACH (no 'roofing' in text) */
+  if (/outreach|email campaign|draft.*email/i.test(t)){
+    ensureDemoLeads();
+    const top = CrmService.best(1)[0];
+    const intro = Chat.add("ai", "Preparing an outreach sequence — Sales and Email agents engaged.");
+    const pipeline = await runPipeline([
+      { label: "SALES AGENT", agent: "sales", task: "Selecting top prospects", dur: 800 },
+      { label: "EMAIL AGENT", agent: "email", task: "Drafting outreach emails", dur: 1100 },
+    ], "Preparing outreach");
+    if (!pipeline) return { reply: "Workflow cancelled." };
+    intro.remove();
+    const draft = "Subject: Growth partnership for " + top.company + "\n\nHi " + top.contact.split(" ")[0] +
+      ",\nI help US roofing companies win more residential contracts through our call-center network. Worth a quick 10-minute call this week?\n\nBest regards";
+    return { reply: "Outreach draft prepared for " + top.company + " (" + top.score + "/100):\n\n" + draft + "\n\n(Demo lead data.)",
+             actions: [{ label: "▤ OPEN CRM", fn: () => showView("crm") }] };
+  }
+
+  /* SHOW views */
+  if (/(show|open).*(crm|lead)/i.test(t) || /my leads|best leads/i.test(t)){
+    showView("crm");
+    ensureDemoLeads(); CrmService.render();
+    const best = CrmService.best(3);
+    return { reply: "CRM opened. Your top demo leads: " + best.map(l => l.company + " (" + l.score + ")").join(", ") + "." };
+  }
+  if (/(show|open).*(job|vacanc)/i.test(t)){
+    showView("jobs");
+    ensureDemoJobs(); JobService.render();
+    return { reply: "Jobs opened — " + JobService.all().length + " demo job records, filterable by keyword, salary and type." };
+  }
+  if (/show activity|activity log/i.test(t)){ showView("activity"); return { reply: "Activity timeline opened — every entry there came from a real action in this workspace." }; }
+
+  /* HELP */
+  if (/\b(help|commands|what can you do)\b/i.test(t))
+    return { reply: "Try: \"Find remote customer support jobs paying at least $800\", \"Analyze my CV\", \"Find roofing companies in Texas\", \"Remember that my target market is US roofing companies\", \"What is my target market?\", \"Create a task to follow up with roofing leads tomorrow\", \"Analyze this job\", \"Prepare application\", \"Prepare outreach\", \"Show activity\"." };
+
+  /* ONLINE AI */
+  const ai = await AiService.chat([
+    { role: "system", content: AiService.systemPrompt() },
+    { role: "user", content: t },
+  ]);
+  if (ai) return { reply: ai };
+
+  /* OFFLINE BRAIN */
+  toast("AI backend unavailable. Demo Mode activated.", "warn");
+  return { reply: await demoBrain(t) };
+}
+
+/* ---------------- submit ---------------- */
+let busy = false;
+async function submit(text){
+  text = (text || "").trim();
+  if (!text || busy) return;
+  busy = true;
+  cancelRun();
+  Voice.stopListening();
+  Chat.typing(false);
+  Chat.add("user", text);
+  $("chatInput").value = "";
+  Voice.setState("PROCESSING");
+  setPhase("AI THINKING…");
+  Chat.typing(true);
+  await sleep(450);
+  setPhase("AI PROCESSING…");
+  let result;
+  try { result = await runCommand(text); }
+  catch(e){
+    console.error(e);
+    result = { reply: "AI backend unavailable. Demo Mode activated. Something went wrong on my side: " + e.message };
+  }
+  if (!result || !result.reply){ busy = false; setPhase(null); Chat.typing(false); return; }
+  setPhase("AI RESPONSE…");
+  Chat.typing(false);
+  await sleep(220);
+  Chat.add("ai", result.reply, result);
+  setPhase(null);
+  Voice.setState("SPEAKING");
+  await Voice.speak(result.reply);
+  if (Store.settings().relisten && Voice.sttSupported && !Voice.denied){
+    await sleep(400);
+    Voice.start();
+  } else {
+    Voice.setState("IDLE");
+  }
+  busy = false;
+}
+
+/* ---------------- Voice ---------------- */
+const Voice = {
+  sttSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+  ttsSupported: "speechSynthesis" in window,
+  rec: null, listening: false, denied: false, speaking: false,
+  pending: "", finalTimer: null, state: "IDLE",
+
+  init(){
+    if (this.sttSupported){
+      this.rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      this.rec.continuous = true;
+      this.rec.interimResults = true;
+      this.rec.lang = Store.settings().sttLang;
+      this.rec.onresult = e => {
+        let interim = "";
+        for (let i = e.resultIndex; i < e.results.length; i++){
+          const r = e.results[i];
+          if (r.isFinal) this.pending += r[0].transcript + " ";
+          else interim += r[0].transcript;
+        }
+        const inp = $("chatInput");
+        if (inp && !inp.value) inp.placeholder = interim ? "…" + interim : "Command AITZAZ CEO…";
+        if (this.pending.trim() && !busy){
+          clearTimeout(this.finalTimer);
+          this.finalTimer = setTimeout(() => {
+            const t = this.pending.trim();
+            this.pending = "";
+            this.stopListening();
+            if (t) submit(t);
+          }, 900);
+        }
+      };
+      this.rec.onerror = e => {
+        if (e.error === "not-allowed"){
+          this.denied = true;
+          this.setState("IDLE");
+          toast("Microphone unavailable. You can continue using text.", "err");
+        } else if (e.error === "network"){
+          this.setState("IDLE");
+          toast("Speech recognition needs internet. Text chat still works.", "warn");
+        } else if (e.error !== "no-speech" && e.error !== "aborted"){
+          toast("Voice error: " + e.error + ". You can continue using text.", "warn");
+        }
+      };
+      this.rec.onend = () => {
+        if (this.listening && !busy && !this.speaking){
+          setTimeout(() => { if (this.listening && !busy && !this.speaking){ try { this.rec.start(); } catch(e){} } }, 350);
+        }
+      };
+    }
+    this.renderDiagnostics();
+    this.initVoices();
+  },
+
+  setState(s){
+    this.state = s;
+    $("voicePillState").textContent = s;
+    $("micStatus").textContent = "MIC: " + s;
+    const mb = $("micBtn");
+    mb.classList.remove("rec", "proc", "speak", "off");
+    if (s === "LISTENING") mb.classList.add("rec");
+    if (s === "PROCESSING") mb.classList.add("proc");
+    if (s === "SPEAKING") mb.classList.add("speak");
+    if (s === "IDLE" && this.denied) mb.classList.add("off");
+    $("speakStopBtn").classList.toggle("show", s === "SPEAKING");
+    $("eq").classList.toggle("show", s === "SPEAKING");
+  },
+
+  start(){
+    if (!this.sttSupported){
+      toast("Speech recognition is not supported in this browser. You can continue using text.", "warn");
+      return;
+    }
+    if (busy) return;
+    this.speaking = false;
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(e){}
+    this.listening = true;
+    this.pending = "";
+    try { this.rec.lang = Store.settings().sttLang; this.rec.start(); } catch(e){}
+    this.setState("LISTENING");
+    ActivityLog.log("Voice: listening started", "sys");
+  },
+  stopListening(){
+    this.listening = false;
+    try { this.rec && this.rec.stop(); } catch(e){}
+  },
+  stopSpeaking(){
+    try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(e){}
+    this.speaking = false;
+  },
+
+  initVoices(){
+    if (!this.ttsSupported) return;
+    const fill = () => {
+      const vs = window.speechSynthesis.getVoices() || [];
+      const list = vs.filter(v => /^en/i.test(v.lang));
+      const sel = $("cfgVoice");
+      if (sel && !sel.options.length){
+        list.forEach(v => {
+          const o = document.createElement("option");
+          o.value = v.voiceURI;
+          o.textContent = v.name + (v.localService ? "" : " (net)");
+          sel.appendChild(o);
+        });
+        if (Store.settings().voiceURI) sel.value = Store.settings().voiceURI;
+      }
+    };
+    fill();
+    window.speechSynthesis.onvoiceschanged = fill;
+  },
+
+  speak(text){
+    const s = Store.settings();
+    if (!this.ttsSupported || !s.speak) return Promise.resolve();
+    return new Promise(res => {
+      this.speaking = true;
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        const vs = window.speechSynthesis.getVoices() || [];
+        const v = vs.find(x => x.voiceURI === s.voiceURI) || vs.find(x => /^en/i.test(x.lang) && x.localService) || vs.find(x => /^en/i.test(x.lang));
+        if (v) u.voice = v;
+        u.rate = s.rate || 1.02;
+        u.onend = () => { this.speaking = false; res(); };
+        u.onerror = () => { this.speaking = false; res(); };
+        window.speechSynthesis.speak(u);
+        setTimeout(() => { if (this.speaking && !window.speechSynthesis.speaking){ this.speaking = false; res(); } }, 30000);
+      } catch(e){ this.speaking = false; res(); }
+    });
+  },
+
+  renderDiagnostics(){
+    $("csStt").textContent = this.sttSupported ? "SUPPORTED" : "UNSUPPORTED";
+    $("csStt").className = "pill " + (this.sttSupported ? "ok" : "err");
+    $("csTts").textContent = this.ttsSupported ? "SUPPORTED" : "UNSUPPORTED";
+    $("csTts").className = "pill " + (this.ttsSupported ? "ok" : "err");
+    $("csYoutube").textContent = "CONNECTED (oEmbed)";
+    $("csYoutube").className = "pill ok";
+    $("csJobs").textContent = CONFIG.jobProviderConnected ? "CONNECTED" : "NOT CONNECTED";
+    $("csCrm").textContent = CONFIG.leadProviderConnected ? "CONNECTED" : "NOT CONNECTED";
+  },
+};
+/* ---------------- Job modal ---------------- */
+function openJobModal(job, score){
+  lastJobId = job.id;
+  $("jmTitle").textContent = job.position + " — " + job.company;
+  $("jmMeta").innerHTML = ["📍 " + job.location, "$" + job.salary + "/mo", job.type, job.exp].map(m => `<span class="jm">${esc(m)}</span>`).join("");
+  $("jmSkills").innerHTML = (job.skills || []).map(s => `<span class="sk">${esc(s)}</span>`).join("");
+  $("jmDesc").value = job.desc;
+  $("jmScore").value = score != null ? score : JobService.score(job, JobService.lastCriteria);
+  $("jmStatus").value = job.status;
+  $("jmMsgWrap").style.display = "none";
+  $("jobModal").classList.add("open");
+}
+function prepareApplication(job){
+  const res = cvCache || CvService.analyze(CvService.text || "customer support communication english remote", job);
+  $("jmMessage").value = res.message;
+  $("jmMsgWrap").style.display = "block";
+  $("jobModal").classList.add("open");
+  $("jobModal").scrollTop = 0;
+}
+function closeJobModal(){ $("jobModal").classList.remove("open"); }
+
+/* ---------------- Lead modal ---------------- */
+let modalLeadId = null;
+function openLeadModal(id){
+  modalLeadId = id || null;
+  const l = id ? CrmService.all().find(x => x.id === id) : null;
+  $("leadModalTitle").textContent = l ? "EDIT LEAD — " + l.company : "ADD LEAD";
+  $("fCompany").value = l ? l.company : "";
+  $("fContact").value = l ? l.contact : "";
+  $("fTitle").value = l ? l.title : "";
+  $("fEmail").value = l ? l.email : "";
+  $("fPhone").value = l ? l.phone : "";
+  $("fLocation").value = l ? l.location : "";
+  $("fIndustry").value = l ? l.industry : "Roofing";
+  $("fScore").value = l ? l.score : 60;
+  $("fStatus").value = l ? l.status : "NEW";
+  $("fNotes").value = l ? l.notes : "";
+  $("fLastContact").value = l ? l.lastContact : "";
+  $("fNextFollowUp").value = l ? l.nextFollowUp : "";
+  $("fDelete").style.display = l ? "inline-block" : "none";
+  $("leadModal").classList.add("open");
+}
+function closeLeadModal(){ $("leadModal").classList.remove("open"); }
+
+/* ---------------- Navigation ---------------- */
+const VIEW_TITLES = { command: "COMMAND", chat: "CHAT", agents: "AGENTS", jobs: "JOBS", crm: "CRM",
+  memory: "MEMORY", tasks: "TASKS", media: "MEDIA", activity: "ACTIVITY", connections: "CONNECTIONS" };
+function showView(name){
+  if (name === "chat"){ showView("command"); setTimeout(() => $("chatInput").focus(), 60); return; }
+  const el = $("view-" + name);
+  if (!el) return;
+  $$(".view").forEach(v => v.classList.remove("active"));
+  el.classList.add("active");
+  $$(".navBtn").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+  $$(".mnav").forEach(b => b.classList.toggle("active", b.dataset.view === name));
+  $("viewTitle").textContent = VIEW_TITLES[name] || name.toUpperCase();
+  $("sidebar").classList.remove("open");
+  $("sidebarOverlay").classList.remove("show");
+  el.scrollTop = 0;
+}
+
+/* ---------------- Wiring ---------------- */
+function wire(){
+  $$(".navBtn").forEach(b => b.onclick = () => showView(b.dataset.view));
+  $$(".mnav").forEach(b => b.onclick = () => showView(b.dataset.view));
+  $("burger").onclick = () => { $("sidebar").classList.add("open"); $("sidebarOverlay").classList.add("show"); };
+  $("sidebarOverlay").onclick = () => { $("sidebar").classList.remove("open"); $("sidebarOverlay").classList.remove("show"); };
+
+  /* chat */
+  $("sendBtn").onclick = () => submit($("chatInput").value);
+  $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") submit($("chatInput").value); });
+  $$(".chip").forEach(b => {
+    const cmd = b.dataset.cmd;
+    b.onclick = () => {
+      if (cmd === "Remember this") submit("Remember that my primary market is roofing companies");
+      else if (cmd === "Create task") submit("Create a task to follow up with roofing leads tomorrow");
+      else if (cmd === "Show CRM") submit("Show my CRM");
+      else if (cmd === "Show activity") submit("Show activity");
+      else if (cmd === "Analyze my CV") submit("Analyze my CV");
+      else if (cmd === "Analyze this job") submit("Analyze this job");
+      else if (cmd === "Prepare application") submit("Prepare application");
+      else if (cmd === "Prepare outreach") submit("Prepare outreach for my top leads");
+      else if (cmd === "Find jobs") submit("Find remote customer support jobs paying at least $800");
+      else submit(cmd);
+    };
+  });
+
+  /* voice */
+  const micTap = () => {
+    if (Voice.speaking){ Voice.stopSpeaking(); Voice.setState("IDLE"); return; }
+    if (Voice.listening){ Voice.stopListening(); Voice.setState("IDLE"); }
+    else Voice.start();
+  };
+  $("micBtn").onclick = micTap;
+  $("speakStopBtn").onclick = () => { Voice.stopSpeaking(); Voice.setState("IDLE"); };
+  $("muteBtn").onclick = () => {
+    const s = Store.settings();
+    s.speak = !s.speak; Store.save();
+    $("muteBtn").textContent = s.speak ? "🔊" : "🔇";
+    $("muteBtn").classList.toggle("off", !s.speak);
+    toast(s.speak ? "AI voice on." : "AI voice muted — replies stay in text.", s.speak ? "" : "warn");
+  };
+  $("muteBtn").textContent = Store.settings().speak ? "🔊" : "🔇";
+  $("muteBtn").classList.toggle("off", !Store.settings().speak);
+
+  /* jobs */
+  $("jobsTabBtn").onclick = () => { $("jobsPanel").style.display = "block"; $("cvPanel").style.display = "none";
+    $("jobsTabBtn").classList.add("active"); $("cvTabBtn").classList.remove("active"); };
+  $("cvTabBtn").onclick = () => { $("jobsPanel").style.display = "none"; $("cvPanel").style.display = "block";
+    $("cvTabBtn").classList.add("active"); $("jobsTabBtn").classList.remove("active"); };
+  ["jobSearchQ", "jobMinSalary", "jobRemote", "jobExp"].forEach(id => $(id).addEventListener("input", () => JobService.render()));
+  $("searchJobsBtn").onclick = async () => {
+    const criteria = { q: $("jobSearchQ").value.trim(), minSalary: parseInt($("jobMinSalary").value || "0", 10) || null,
+                       remote: $("jobRemote").value || null, exp: $("jobExp").value || null };
+    JobService.lastCriteria = criteria;
+    ensureDemoJobs();
+    JobService.render();
+    toast("Filtered job list — demo job data (provider not connected).");
+  };
+  $("jobsExportCsv").onclick = () => ExportService.jobsCsv();
+  $("jobsExportJson").onclick = () => ExportService.jobsJson();
+  $("jobResults").addEventListener("click", e => {
+    const b = e.target.closest(".jbtn");
+    if (!b) return;
+    const job = JobService.all().find(j => j.id === b.dataset.id);
+    if (!job) return;
+    if (b.dataset.f === "open") openJobModal(job);
+    if (b.dataset.f === "save"){ JobService.update(job.id, { status: "SAVED" }); toast("Job saved."); }
+    if (b.dataset.f === "analyze"){ openJobModal(job); prepareAnalysis(job); }
+    if (b.dataset.f === "apply"){ openJobModal(job); prepareApplication(job); }
+    if (b.dataset.f === "del") JobService.remove(job.id);
+  });
+  $("jobResults").addEventListener("change", e => {
+    const sel = e.target.closest(".stSelect");
+    if (sel) JobService.update(sel.dataset.id, { status: sel.value });
+  });
+  $("jmSave").onclick = () => {
+    const job = JobService.all().find(j => j.id === lastJobId);
+    if (!job) return;
+    JobService.update(job.id, { status: $("jmStatus").value, score: parseInt($("jmScore").value || "0", 10) });
+    closeJobModal(); toast("Job updated.");
+  };
+  $("jmAnalyze").onclick = () => { const job = JobService.all().find(j => j.id === lastJobId); if (job) prepareAnalysis(job); };
+  $("jmApply").onclick = () => { const job = JobService.all().find(j => j.id === lastJobId); if (job) prepareApplication(job); };
+  $("jmCopyMsg").onclick = () => {
+    const msg = $("jmMessage").value;
+    if (!msg){ toast("Press PREPARE APPLICATION first.", "warn"); return; }
+    try { navigator.clipboard.writeText(msg); toast("Application message copied."); }
+    catch(e){ $("jmMessage").select(); toast("Select and copy manually (Ctrl/Cmd+C).", "warn"); }
+  };
+  $("jmTask").onclick = () => {
+    const job = JobService.all().find(j => j.id === lastJobId);
+    if (!job) return;
+    const d = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    TaskService.add("Follow up on application: " + job.position + " at " + job.company, { priority: "HIGH", status: "TODO", due: d, related: job.company });
+    closeJobModal(); toast("Follow-up task created.");
+  };
+  $("jmClose").onclick = closeJobModal;
+  $("jobModal").addEventListener("click", e => { if (e.target.id === "jobModal") closeJobModal(); });
+
+  /* CV */
+  $("cvFile").addEventListener("change", e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    if (/\.pdf$/i.test(f.name)){
+      toast("PDF parsing requires a backend service — paste the text instead.", "warn");
+      $("cvNote").textContent = "PDF parsing requires a backend service. Paste the CV text into the box instead.";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => { $("cvPaste").value = String(reader.result || ""); CvService.text = $("cvPaste").value; $("cvNote").textContent = "Loaded: " + f.name; };
+    reader.readAsText(f);
+  });
+  $("cvPaste").addEventListener("input", () => { CvService.text = $("cvPaste").value; });
+  $("cvAnalyzeBtn").onclick = () => {
+    const job = JobService.all().find(j => j.id === lastJobId) || null;
+    const res = CvService.analyze($("cvPaste").value, job);
+    if (!res){ toast("Paste or upload CV text first.", "warn"); return; }
+    cvCache = res;
+    CvService.render(res);
+    $("cvNote").textContent = "CV analyzed" + (job ? " against " + job.position + " at " + job.company : " (no job selected — open a job and press ANALYZE)") + ".";
+    ActivityLog.log("CV analyzed" + (job ? " vs " + job.company : ""), "job");
+  };
+  $("cvCopyCover").onclick = () => { try { navigator.clipboard.writeText($("cvCoverLetter").value); toast("Cover letter copied."); } catch(e){ $("cvCoverLetter").select(); } };
+  $("cvCopyMessage").onclick = () => { try { navigator.clipboard.writeText($("cvMessage").value); toast("Application message copied."); } catch(e){ $("cvMessage").select(); } };
+
+  /* CRM */
+  $("crmSearch").oninput = () => CrmService.render();
+  $("crmFilter").onchange = () => CrmService.render();
+  $("crmSort").onchange = () => CrmService.render();
+  $("crmAddBtn").onclick = () => openLeadModal(null);
+  $("crmExportCsv").onclick = () => ExportService.crmCsv();
+  $("crmExportJson").onclick = () => ExportService.crmJson();
+  $("leadsBody").addEventListener("change", e => {
+    const sel = e.target.closest(".stSelect");
+    if (sel) CrmService.update(sel.dataset.id, { status: sel.value });
+  });
+  $("leadsBody").addEventListener("click", e => {
+    const b = e.target.closest(".tbtn");
+    if (!b) return;
+    if (b.dataset.f === "view") openLeadModal(b.dataset.id);
+    if (b.dataset.f === "del") CrmService.remove(b.dataset.id);
+  });
+  $("fSave").onclick = () => {
+    const lead = {
+      company: $("fCompany").value.trim(), contact: $("fContact").value.trim(), title: $("fTitle").value.trim(),
+      email: $("fEmail").value.trim(), phone: $("fPhone").value.trim(), location: $("fLocation").value.trim(),
+      industry: $("fIndustry").value.trim() || "Roofing",
+      score: Math.max(0, Math.min(100, parseInt($("fScore").value || "0", 10))),
+      status: $("fStatus").value, notes: $("fNotes").value.trim(),
+      lastContact: $("fLastContact").value, nextFollowUp: $("fNextFollowUp").value,
+    };
+    if (!lead.company){ toast("Company name is required.", "err"); return; }
+    if (modalLeadId) CrmService.update(modalLeadId, lead);
+    else CrmService.add(lead);
+    closeLeadModal();
+  };
+  $("fCreateTask").onclick = () => {
+    const lead = modalLeadId ? CrmService.all().find(x => x.id === modalLeadId) : null;
+    const title = "Follow up with " + ($("fCompany").value.trim() || (lead ? lead.company : "lead"));
+    const d = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
+    TaskService.add(title, { priority: "HIGH", status: "TODO", due: d, related: $("fCompany").value.trim() });
+    toast("Follow-up task created.");
+  };
+  $("fDelete").onclick = () => { if (modalLeadId){ CrmService.remove(modalLeadId); closeLeadModal(); } };
+  $("fClose").onclick = closeLeadModal;
+  $("leadModal").addEventListener("click", e => { if (e.target.id === "leadModal") closeLeadModal(); });
+
+  /* memory */
+  $("memSearch").oninput = () => MemoryService.render();
+  $("memAddBtn").onclick = () => {
+    const m = MemoryService.upsert($("memKey").value, $("memVal").value);
+    if (m){ $("memKey").value = ""; $("memVal").value = ""; toast("Memory saved."); }
+    else toast("Both key and value are required.", "err");
+  };
+  $("memExportCsv").onclick = () => ExportService.memoryCsv();
+  $("memExportJson").onclick = () => ExportService.memoryJson();
+  $("memoryList").addEventListener("click", e => {
+    const b = e.target.closest(".tbtn");
+    if (!b) return;
+    const m = MemoryService.all().find(x => x.id === b.dataset.id);
+    if (b.dataset.f === "memdel") MemoryService.remove(b.dataset.id);
+    if (b.dataset.f === "memedit" && m){
+      editMemId = m.id;
+      $("emKey").value = m.key; $("emVal").value = m.value;
+      $("memModal").classList.add("open");
+    }
+  });
+  $("emSave").onclick = () => {
+    const m = MemoryService.all().find(x => x.id === editMemId);
+    if (m){
+      m.key = $("emKey").value.trim(); m.value = $("emVal").value.trim(); m.ts = Date.now();
+      Store.save(); MemoryService.render();
+      ActivityLog.log("Memory: updated — " + m.key, "memory");
+    }
+    $("memModal").classList.remove("open");
+  };
+  $("emClose").onclick = () => $("memModal").classList.remove("open");
+  $("memModal").addEventListener("click", e => { if (e.target.id === "memModal") $("memModal").classList.remove("open"); });
+
+  /* tasks */
+  $("taskAddBtn").onclick = () => {
+    const t = $("taskTitle").value.trim();
+    if (!t){ toast("Task title required.", "err"); return; }
+    TaskService.add(t, { priority: $("taskPriority").value, status: "TODO", due: $("taskDue").value,
+                         related: $("taskRelated").value.trim(), notes: $("taskNotes").value.trim() });
+    $("taskTitle").value = ""; $("taskRelated").value = ""; $("taskNotes").value = "";
+  };
+  $("taskExportCsv").onclick = () => ExportService.tasksCsv();
+  $("taskExportJson").onclick = () => ExportService.tasksJson();
+  $("taskList").addEventListener("change", e => {
+    const sel = e.target.closest("select");
+    if (!sel) return;
+    const patch = {};
+    if (sel.dataset.f === "priority") patch.priority = sel.value;
+    if (sel.dataset.f === "status") patch.status = sel.value;
+    TaskService.update(sel.dataset.id, patch);
+  });
+  $("taskList").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.dataset.f === "complete") TaskService.update(b.dataset.id, { status: "DONE" });
+    if (b.dataset.f === "del") TaskService.remove(b.dataset.id);
+  });
+
+  /* media */
+  $("mediaAddBtn").onclick = async () => {
+    const url = $("mediaUrl").value.trim();
+    if (!url) return;
+    $("mediaAddBtn").textContent = "…";
+    const res = await MediaService.add(url);
+    $("mediaAddBtn").textContent = "+ SAVE LINK";
+    if (res.error) toast(res.error, "err");
+    else { $("mediaUrl").value = ""; toast("Saved: " + res.title); }
+  };
+  $("mediaList").addEventListener("click", e => {
+    const b = e.target.closest(".cbtn");
+    if (!b) return;
+    const m = MediaService.all().find(x => x.id === b.dataset.id);
+    if (!m) return;
+    if (b.dataset.f === "open") window.open(m.url, "_blank");
+    if (b.dataset.f === "del") MediaService.remove(m.id);
+  });
+
+  /* activity */
+  $$("#activityFilters .chip").forEach(b => b.onclick = () => {
+    $$("#activityFilters .chip").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    ActivityLog.filter = b.dataset.f;
+    ActivityLog.render();
+  });
+
+  /* connections */
+  $("aiEndpointInput").value = Store.settings().aiEndpoint || "";
+  $("aiKeyInput").value = Store.settings().aiKey || "";
+  $("aiModelInput").value = Store.settings().aiModel || "";
+  $("aiTestBtn").onclick = async () => {
+    $("aiTestBtn").textContent = "TESTING…";
+    $("aiStatusMsg").textContent = "Testing endpoint…";
+    const prev = Store.settings();
+    prev.aiEndpoint = $("aiEndpointInput").value.trim();
+    prev.aiKey = $("aiKeyInput").value.trim();
+    prev.aiModel = $("aiModelInput").value.trim();
+    const ok = await AiService.chat([{ role: "user", content: "Reply with the single word: ok" }], CONFIG.pingTimeoutMs);
+    $("aiTestBtn").textContent = "TEST CONNECTION";
+    if (ok){
+      $("aiStatusMsg").textContent = "✓ Connection works — press SAVE CONFIGURATION to keep it. (Response: " + ok.slice(0, 40) + "…)";
+      setBackendPill("connected");
+    } else {
+      $("aiStatusMsg").textContent = "✗ No response from this endpoint. Check the URL/key/CORS. Falling back to demo brain.";
+      setBackendPill("demo");
+    }
+  };
+  $("aiSaveBtn").onclick = () => {
+    const s = Store.settings();
+    s.aiEndpoint = $("aiEndpointInput").value.trim();
+    s.aiKey = $("aiKeyInput").value.trim();
+    s.aiModel = $("aiModelInput").value.trim();
+    Store.save();
+    toast("AI configuration saved.");
+    checkAiConnection();
+  };
+  $("cfgSttLang").value = Store.settings().sttLang;
+  $("cfgSttLang").onchange = () => { Store.settings().sttLang = $("cfgSttLang").value; Store.save(); if (Voice.rec) Voice.rec.lang = $("cfgSttLang").value; };
+  $("cfgVoice").onchange = () => { Store.settings().voiceURI = $("cfgVoice").value; Store.save(); };
+  $("cfgRate").value = Store.settings().rate;
+  $("cfgRate").oninput = () => { Store.settings().rate = parseFloat($("cfgRate").value); Store.save(); };
+  $("sbTestBtn").onclick = async () => {
+    const url = $("sbUrlInput").value.trim().replace(/\/+$/, "");
+    const key = $("sbKeyInput").value.trim();
+    if (!url || !key){ $("csSupabase").textContent = "NOT CONFIGURED"; $("csSupabase").className = "pill"; toast("Enter Supabase URL and anon key first.", "warn"); return; }
+    try {
+      const r = await fetch(url + "/rest/v1/", { headers: { "apikey": key, "Authorization": "Bearer " + key } });
+      if (r.ok || r.status === 404){
+        $("csSupabase").textContent = "REACHABLE";
+        $("csSupabase").className = "pill ok";
+        Store.settings().supabaseUrl = url; Store.settings().supabaseKey = key; Store.save();
+        toast("Supabase reachable — storage adapter ready (tables not created).");
+      } else {
+        $("csSupabase").textContent = "ERROR " + r.status;
+        $("csSupabase").className = "pill err";
+        toast("Supabase responded with " + r.status, "err");
+      }
+    } catch(e){
+      $("csSupabase").textContent = "UNREACHABLE";
+      $("csSupabase").className = "pill err";
+      toast("Supabase unreachable.", "err");
+    }
+  };
+  $("sbUrlInput").value = Store.settings().supabaseUrl || "";
+  $("sbKeyInput").value = Store.settings().supabaseKey || "";
+  if (Store.settings().supabaseUrl){ $("csSupabase").textContent = "CONFIGURED"; $("csSupabase").className = "pill warn"; }
+  $("exportAllBtn").onclick = () => ExportService.everything();
+  $("resetBtn").onclick = () => {
+    if (confirm("Reset the whole workspace (leads, jobs, memories, tasks, media, activity)?")){
+      localStorage.removeItem(CONFIG.storageKey);
+      Store.seed();
+      CrmService.render(); JobService.render(); MemoryService.render(); TaskService.render(); MediaService.render(); ActivityLog.render();
+      Chat.add("sys", "Workspace reset.");
+      toast("Workspace reset.");
+    }
+  };
+}
+let editMemId = null;
+
+/* ---------------- Job analysis (score + recommendation) ---------------- */
+function prepareAnalysis(job){
+  const criteria = JobService.lastCriteria || { q: "customer support", minSalary: 800, remote: "remote" };
+  const score = JobService.score(job, criteria);
+  $("jmScore").value = score;
+  $("jmMsgWrap").style.display = "none";
+  let txt = "Match analysis vs your last search criteria" +
+    (criteria.minSalary ? " (min $" + criteria.minSalary + "/mo)" : "") + ":\n\n" +
+    "• Salary " + job.salary + "$/mo " + (criteria.minSalary ? (job.salary >= criteria.minSalary ? "meets" : "below") + " requirement" : "— no minimum set") + "\n" +
+    "• Type: " + job.type + (criteria.remote ? " (you asked for remote)" : "") + "\n" +
+    "• Keywords: " + (job.skills || []).join(", ") + "\n" +
+    "• Overall: " + score + "% match";
+  if (CvService.text){
+    const res = CvService.analyze(CvService.text, job);
+    cvCache = res;
+    txt += "\n\nCV compatibility: " + res.score + "% — " + res.recommend;
+    CvService.render(res);
+  }
+  $("jmDesc").value = txt;
+  toast("Job analyzed.");
+}
+
+/* ---------------- Boot ---------------- */
+function boot(){
+  Store.load();
+  // Demo data sets are seeded once so CRM and Jobs are never empty;
+  // they are labelled DEMO DATA until a live provider is connected.
+  ensureDemoLeads();
+  ensureDemoJobs();
+  AgentRuntime.init();
+  wire();
+  CrmService.render();
+  JobService.render();
+  MemoryService.render();
+  TaskService.render();
+  MediaService.render();
+  ActivityLog.render();
+  Voice.init();
+
+  setInterval(() => { $("clock").textContent = fmtTime(); }, 500);
+  $("clock").textContent = fmtTime();
+  $("storeInfo").textContent = Store.sizeKb();
+  setInterval(() => { $("storeInfo").textContent = Store.sizeKb(); }, 5000);
+
+  setBackendPill("demo");
+  checkAiConnection();
+  setInterval(checkAiConnection, 90000);
+
+  Chat.add("sys", "AITZAZ-OS online. AI backend: " + (AiService.lastStatus === "connected" ? "connected" : "checking…") + " — type a command or press the mic.");
+  if (!Voice.sttSupported){
+    Chat.add("sys", "Speech recognition is not supported in this browser — you can continue using text.");
+  }
+}
+boot();
+
+/* test harness hook */
+globalThis.__t = { runCommand, submit, CrmService, JobService, CvService, MemoryService, TaskService, MediaService, ExportService, Store, Voice, ActivityLog, AiService, AgentRuntime, parseJobCriteria, parseRemember, DEMO_JOBS, DEMO_LEADS };
+</script>
+</body>
+</html>

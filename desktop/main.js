@@ -11,7 +11,7 @@
  * the address between launches.
  */
 
-const { app, BrowserWindow, ipcMain, Menu, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, session, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -282,6 +282,34 @@ if (!gotLock) {
 
 function start() {
   buildMenu();
+
+  // Mic permission (the whole point of this app):
+  // 1) Only the configured HUD origin may request media permissions.
+  session.fromPartition(PARTITION).setPermissionRequestHandler(
+    (wc, permission, callback, details) => {
+      let allowed = false;
+      if (permission === 'media') {
+        try {
+          const cfg = loadConfig();
+          const target = hudUrl(cfg.url);
+          const req = new URL(details.requestingUrl || wc.getURL());
+          allowed = Boolean(target) && req.host === new URL(target).host;
+        } catch {
+          allowed = false;
+        }
+      }
+      callback(allowed);
+    }
+  );
+  // 2) macOS: ask once up front so the TCC entry exists with a prompt
+  //    (requires NSMicrophoneUsageDescription in the packaged build).
+  if (process.platform === 'darwin') {
+    try {
+      systemPreferences.askForMediaAccess('microphone').catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  }
 
   const cfg = loadConfig();
   const target = hudUrl(cfg.url);

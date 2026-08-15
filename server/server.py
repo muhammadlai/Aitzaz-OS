@@ -111,6 +111,17 @@ def load_env() -> None:
 
 
 def load_config() -> dict:
+    if not CONFIG_PATH.exists():
+        example = ROOT / "config" / "server.example.yaml"
+        if not example.exists():
+            raise SystemExit(
+                "Aitzaz voice server cannot start: config/server.yaml not found "
+                "and config/server.example.yaml is missing too. Restore the repo files."
+            )
+        import shutil
+        shutil.copyfile(example, CONFIG_PATH)
+        print(f"First run: created {CONFIG_PATH} from the example template "
+              "(default voice works out of the box; see docs/SETUP.md).", flush=True)
     return yaml.safe_load(CONFIG_PATH.read_text(encoding="utf-8"))
 
 
@@ -676,6 +687,53 @@ _WARM_STARTED = False
 ALLOWED_ORIGIN_HOSTS = {"jarvis.local", "jarvis", "localhost", "127.0.0.1"}
 ALLOWED_ORIGIN_HOSTS |= set((CFG.get("security") or {}).get("extra_origin_hosts") or [])
 
+_LOCAL_IPS_CACHE: dict = {"ts": 0.0, "hosts": {"127.0.0.1", "::1", "localhost"}}
+
+
+def _local_ip_hosts() -> set[str]:
+    """This machine's own IPs (TTL-cached): the HUD is legit when opened by raw
+    LAN IP, and desktop-app users connect by IP more often than by mDNS name.
+    Without this, a browser Origin like https://192.168.1.20 was rejected and
+    the HUD sat at LINK DOWN forever (no voice in or out)."""
+    now = time.time()
+    if now - _LOCAL_IPS_CACHE["ts"] < 60:
+        return _LOCAL_IPS_CACHE["hosts"]
+    hosts = {"127.0.0.1", "::1", "localhost"}
+    try:
+        import socket
+        # 1) hostname resolution (covers the common Mac/Linux case)
+        for family in (socket.AF_INET, socket.AF_INET6):
+            try:
+                infos = socket.getaddrinfo(socket.gethostname(), None, family)
+            except OSError:
+                continue
+            for info in infos:
+                hosts.add(str(info[4][0]).split("%")[0].lower())
+        # 2) default-route source IP (UDP connect trick — no traffic is sent).
+        #    Catches setups where the hostname does NOT resolve to the LAN
+        #    interface (link-local IPs, some VPNs, containers).
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            probe.settimeout(1.0)
+            probe.connect(("8.8.8.8", 80))
+            hosts.add(str(probe.getsockname()[0]).split("%")[0].lower())
+            probe.close()
+        except OSError:
+            pass
+        # 3) enumerate every interface (covers Wi-Fi + Ethernet + VPN at once)
+        try:
+            import psutil
+            for addrs in psutil.net_if_addrs().values():
+                for a in addrs:
+                    if a.family in (socket.AF_INET, socket.AF_INET6):
+                        hosts.add(str(a.address).split("%")[0].lower())
+        except Exception:
+            pass
+    except Exception:
+        pass
+    _LOCAL_IPS_CACHE.update(ts=now, hosts=hosts)
+    return hosts
+
 
 def hud_token() -> str | None:
     env_name = (CFG.get("security") or {}).get("hud_token_env", "JARVIS_HUD_TOKEN")
@@ -698,14 +756,24 @@ async def api_auth_middleware(request: Request, call_next):
 
 
 def _ws_allowed(ws: WebSocket) -> bool:
-    """Browsers send Origin (+cookie); native clients (PTT, tests) send neither."""
+    """Browsers send Origin (+cookie); native clients (PTT, tests) send neither.
+
+    The HUD can be opened by any host the user typed — raw LAN IP, mDNS name,
+    custom domain — so we accept an origin when:
+      1. it's in the explicit allowlist, or
+      2. it's an IP of this machine (the server itself), or
+      3. it matches the Host header of THIS WebSocket request (same-origin;
+         a page served from a different host can never produce that).
+    """
     origin = ws.headers.get("origin")
     if not origin:
         return True  # non-browser client on the LAN (Python PTT, e2e tests)
     from urllib.parse import urlparse
     host = (urlparse(origin).hostname or "").lower()
-    if host not in ALLOWED_ORIGIN_HOSTS:
-        return False
+    if host not in ALLOWED_ORIGIN_HOSTS and host not in _local_ip_hosts():
+        req_host = (ws.headers.get("host") or "").split(":")[0].lower()
+        if not req_host or host != req_host:
+            return False
     token = hud_token()
     if not token:
         return True
@@ -1074,8 +1142,10 @@ async def _run_turn(ws: WebSocket, pipeline: VoicePipelineServer, conn: ConnStat
                 transcript_sent = transcript
             conn.spoken_sentences = []
             await pipeline.stream_response_audio(ws, transcript_sent, timing, conn)
-            timing.total_done_monotonic = time.perf_counter()
-            await ws.send_json({"type": "done", "turn_id": timing.turn_id, "timing": timing.summary()})
+        # always close the turn with a done event — including empty transcripts,
+        # otherwise clients (PTT, wake-word) that wait for it hang forever
+        timing.total_done_monotonic = time.perf_counter()
+        await ws.send_json({"type": "done", "turn_id": timing.turn_id, "timing": timing.summary()})
     except asyncio.CancelledError:
         timing.errors.append("turn cancelled (barge-in or stop)")
         raise
@@ -1170,6 +1240,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     if conn.timing is None:
                         await ws.send_json({"type": "error", "message": "Received stop before start."})
                         continue
+                    if conn.turn_task is not None and not conn.turn_task.done():
+                        # duplicate stop while the turn is already processing —
+                        # ignore it instead of orphaning the running turn task
+                        continue
                     conn.recording = False
                     conn.timing.end_of_speech_monotonic = time.perf_counter()
                     conn.turn_task = asyncio.create_task(_run_turn(ws, pipeline, conn))
@@ -1199,11 +1273,34 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         if conn.turn_task and not conn.turn_task.done():
             conn.turn_task.cancel()
         print("Client disconnected", flush=True)
+    except RuntimeError:
+        # Starlette raises this (not WebSocketDisconnect) when the peer drops
+        # the TCP connection abruptly (app quit, network blip) — treat the same.
+        if conn.turn_task and not conn.turn_task.done():
+            conn.turn_task.cancel()
+        print("Client disconnected abruptly", flush=True)
     finally:
         WS_CLIENTS.discard(ws)
 
 
 def main() -> int:
+    # Loud, actionable warnings for the two most common "no voice" causes,
+    # instead of silent failure modes (the HUD only sees a generic error).
+    key = (os.environ.get("ELEVENLABS_API_KEY")
+           or os.environ.get("ELEVEN_API_KEY")
+           or os.environ.get("XI_API_KEY"))
+    if not key:
+        print("STARTUP WARNING: ELEVENLABS_API_KEY missing from ~/.hermes/.env — "
+              "spoken replies will fail (no voice output).", flush=True)
+    voice_id = str((CFG.get("voice") or {}).get("voice_id") or "").strip()
+    if not voice_id or "YOUR_" in voice_id.upper():
+        print("STARTUP WARNING: voice.voice_id not configured in config/server.yaml — "
+              "spoken replies will fail (no voice output).", flush=True)
+    hermes_key_env = (CFG.get("hermes") or {}).get("api_key_env", "API_SERVER_KEY")
+    if not os.environ.get(hermes_key_env):
+        print(f"STARTUP WARNING: {hermes_key_env} missing from ~/.hermes/.env — "
+              "agent backend offline, basic mode only.", flush=True)
+
     server = CFG["server"]
     host = server.get("host", "0.0.0.0")
     port = int(server.get("port", 8765))
@@ -1211,6 +1308,23 @@ def main() -> int:
     cert = server.get("tls_cert")
     key = server.get("tls_key")
     print(f"Starting Hermes voice server on ws://{host}:{port}/ws", flush=True)
+    # First run without certs: auto-generate a self-signed pair so the HUD
+    # gets https (browser mic requires it) with zero manual steps.
+    if (tls_ports and cert and key
+            and not ((ROOT / cert).exists() and (ROOT / key).exists())):
+        make_certs = ROOT / "scripts" / "make-certs.sh"
+        if make_certs.exists():
+            import subprocess
+            try:
+                r = subprocess.run(["bash", str(make_certs)], cwd=str(ROOT),
+                                   capture_output=True, text=True, timeout=60)
+                print((r.stdout or r.stderr or "certs generated").strip()[:400], flush=True)
+            except Exception as exc:
+                print(f"STARTUP WARNING: could not auto-generate TLS certs ({exc}); "
+                      "running ws-only. Run scripts/make-certs.sh manually.", flush=True)
+        else:
+            print("STARTUP WARNING: TLS certs missing and scripts/make-certs.sh "
+                  "not found; running ws-only.", flush=True)
     if tls_ports and cert and key and (ROOT / cert).exists() and (ROOT / key).exists():
         servers = [uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info"))]
         for tp in tls_ports:

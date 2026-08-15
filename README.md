@@ -1,6 +1,46 @@
 # Aitzaz AI Pro — Voice + HUD for Hermes Agent
 
-A self-hosted, futuristic AI voice assistant and command center built on top of
+## 🖥️ AITZAZ-OS AI Command Center (zero-setup demo)
+
+Full **AI operating-system dashboard** in one file: `aitzaz-os.html`.
+
+- **Command Center** — AI chat with THINKING → PROCESSING → RESPONSE states,
+  CEO orchestrator (Lead Hunter · Research · CRM · Sales · Email · Memory)
+  with animated workflows: USER → CEO → AGENTS → CEO REPORT
+- **Voice AI** — browser SpeechRecognition + speechSynthesis
+  (IDLE / LISTENING / PROCESSING / SPEAKING)
+- **CRM** — 10 Texas roofing demo leads: search, filter, sort, edit, add,
+  delete, 6 statuses, lead scores
+- **Memory** — "Remember that…" → stored persistently; "What is my target
+  market?" → correct recall (Supabase-ready structure)
+- **Tasks** — AI-generated follow-ups with priority/status/due controls
+- **Live Activity stream, System Health, Settings, Demo Commands**
+
+Zero servers, zero keys: AI falls back to the built-in demo brain when the
+free endpoint is unreachable ("AI service unavailable — Demo Mode activated").
+Honest labeling: demo lead data is marked as such — external lead provider
+not connected.
+
+**Open directly (no download):** https://cdn.jsdelivr.net/gh/muhammadlai/Aitzaz-OS@demo-v1/aitzaz-os.html
+**Download:** [aitzaz-os.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/demo-v1/aitzaz-os.html)
+(right-click → Save As → double-click to open in Chrome/Edge/Safari) → mic
+allow → say "Find roofing companies in Texas".
+
+## ⚡ Zero-setup voice app (koi server, koi key, koi terminal NAHI)
+
+Bus **`aitzaz-voice.html`** kholo browser mein (Chrome/Edge/Safari) → mic allow
+karo → bolo. Bolta hai, sunta hai, AI jawab deta hai — sab free, kisi bhi
+computer se:
+
+- **Voice IN:** browser ka built-in SpeechRecognition (free)
+- **Brain:** Pollinations.ai free LLM (koi API key nahi) + offline basic brain
+  (time, date, joke, weather, dictionary, Wikipedia, math)
+- **Voice OUT:** browser ki awaaz (English) ya Google Translate TTS (Urdu/Hindi)
+
+Download: [aitzaz-voice.html](https://raw.githubusercontent.com/muhammadlai/Aitzaz-OS/arena%2F01a00574-aitzaz-os/aitzaz-voice.html)
+(right-click → Save As → double-click). Ya repo se `git pull` ke baad wahi file.
+
+Self-hosted, futuristic AI voice assistant and command center built on top of
 [Hermes Agent](https://github.com/NousResearch/hermes-agent) (NousResearch's
 open-source autonomous agent). Talk to a *real* agent — one with persistent
 memory, terminal access, web search, file tools, and 80+ skills — through a
@@ -101,7 +141,24 @@ restart.
 
 ## Install
 
-Full walkthrough in [docs/SETUP.md](docs/SETUP.md). Short version:
+**macOS — one command does everything** (venv, config, certs, secrets,
+launchd auto-start, health check):
+
+```bash
+git clone https://github.com/muhammadlai/Aitzaz-OS.git
+cd Aitzaz-OS/server
+scripts/jarvis-setup.sh                       # answers/creates everything
+scripts/jarvis-setup.sh --elevenlabs-key KEY  # add your ElevenLabs key later
+```
+
+Then open `https://YOUR_HOST/hud/` and talk. The default voice (ElevenLabs
+premade "Adam") works out of the box; change `voice.voice_id` in
+`config/server.yaml` to use any voice from your Voice Library. The server
+also self-heals on first run: if `config/server.yaml` or the TLS certs are
+missing, it creates them automatically.
+
+Full walkthrough in [docs/SETUP.md](docs/SETUP.md). Manual install, short
+version:
 
 ```bash
 # 1. Enable the Hermes Agent API server
@@ -114,19 +171,29 @@ EOF
 hermes gateway   # or set up its LaunchAgent / service
 
 # 2. This repo
-git clone https://github.com/muhammadlai/Aitzaz-OS.git
 cd Aitzaz-OS/server
 python3 -m venv .venv
-.venv/bin/pip install fastapi uvicorn requests pyyaml numpy anthropic \
-    RealtimeSTT faster-whisper silero-vad websockets psutil
-cp config/server.example.yaml config/server.yaml   # edit: your ElevenLabs voice_id etc.
+.venv/bin/pip install -r requirements.txt
+cp config/server.example.yaml config/server.yaml   # default voice works already
 scripts/make-certs.sh                              # self-signed TLS (browser mic needs it)
-scripts/make-boot-audio.sh YourName                # one-time boot greeting synthesis
 
 # 3. Run
 .venv/bin/python server.py
 # open https://YOUR_HOST/hud/ → accept cert → enter your JARVIS_HUD_TOKEN → talk
 ```
+
+**Urdu / Roman Urdu — ek nazar mein:**
+
+- **Awaaz nahi aa rahi?** Mac par chalao: `cd server && scripts/jarvis-doctor.sh`
+  — jo line FAIL dikhe usko theek karo, phir dobara chalao.
+- **Sab kuch khud set karna hai?** `scripts/jarvis-setup.sh` — venv, config,
+  certs, keys aur launchd sab khud bana deta hai.
+- **Voice (TTS) band?** `ELEVENLABS_API_KEY` `~/.hermes/.env` mein hona
+  chahiye (elevenlabs.io → Profile → API Keys). Default awaaz "Adam" pehle se
+  set hai — `server.yaml` mein `voice_id` badal kar koi bhi awaaz chun lo.
+- **Mic band?** Browser/desktop app ko microphone permission do (System
+  Settings → Privacy & Security → Microphone), aur cert trusted hona chahiye
+  (setup script khud trust kar deta hai).
 
 For auto-start on boot, see [launchd/](launchd/) (macOS) — the plists document
 two non-obvious macOS traps (external-drive TCC and log paths) that cost us an
@@ -149,7 +216,7 @@ evening.
 ```
 server/          FastAPI voice pipeline + HUD host (the core of this project)
 server/hud/      single-file HUD (vanilla JS, no build step)
-server/scripts/  start/stop/health/smoke + cert & boot-audio generators
+server/scripts/  start/stop/health/doctor/smoke + cert & boot-audio generators
 app/             Aitzaz AI Pro — full desktop AI companion (Electron + Vue 3 + Go).
                  Multilingual, wake word, memory/RAG, vision, computer-use tools,
                  Gmail/Calendar, MCP, avatar, permissions (formerly Zara AI).

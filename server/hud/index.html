@@ -488,7 +488,16 @@ function wsUrl(){return (location.protocol==="https:"?"wss://":"ws://")+location
 function connect(){
   ws=new WebSocket(wsUrl()); ws.binaryType="arraybuffer";
   ws.onopen=()=>{wsReady=true;$("wsDot").className="dot on";$("wsState").textContent="online";$("connState").textContent="LINK ACTIVE";$("footMsg").textContent="AITZAZ AI PRO CONNECTED";startListening()};
-  ws.onclose=()=>{wsReady=false;$("wsDot").className="dot off";$("wsState").textContent="offline";$("connState").textContent="LINK DOWN";setState("standby","STANDBY");setTimeout(connect,3000)};
+  ws.onclose=ev=>{
+    wsReady=false;capturing=false;
+    $("wsDot").className="dot off";$("wsState").textContent="offline";$("connState").textContent="LINK DOWN";
+    $("talkBtn").textContent="ENGAGE VOICE";$("levelBar").style.width="0%";
+    setState("standby","STANDBY");
+    // 4401 = the server rejected us for auth: show the PIN gate instead of
+    // silently retrying every 3s (the reload after auth reconnects).
+    if(ev&&ev.code===4401){ showPinGate(); return; }
+    setTimeout(connect,3000)
+  };
   ws.onerror=()=>{};
   ws.onmessage=ev=>{
     if(ev.data instanceof ArrayBuffer){playChunk(ev.data);return}
@@ -505,7 +514,15 @@ function connect(){
       else if(e.state==="speaking")setState("speaking","SPEAKING");
       else if(e.state==="stopped"){setState("standby","STANDBY");showStop(false);stopPlayback();addMsg("sys","run stopped");resumeListening()}
     }
-    else if(e.type==="error"){ clearLive(); addMsg("sys","error: "+e.message); setState("standby","STANDBY"); showStop(false); resumeListening(); }
+    else if(e.type==="error"){
+      clearLive(); addMsg("sys","error: "+e.message); showStop(false);
+      // voice-chain errors (TTS key/quota, agent down) deserve the red state;
+      // benign ones like "no transcript detected" stay quiet.
+      if(/elevenlabs|api key|voice|http 4|quota|agent backend|unavailable/i.test(e.message||""))
+        setState("error","VOICE ERROR",String(e.message||"").slice(0,60).toUpperCase());
+      else setState("standby","STANDBY");
+      resumeListening();
+    }
     else if(e.type==="done"){
       currentRun=null; showStop(false);
       const tm=e.timing||{};
@@ -607,7 +624,14 @@ let hadSpeech=false, lastSpeechAt=0, speechStartAt=0;
 async function startListening(opts={}){
   const bargeIn=!!opts.bargeIn;
   if(!wsReady){addMsg("sys","voice server offline");return}
-  try{await initMic()}catch(err){addMsg("sys","mic blocked: "+err.message);return}
+  try{await initMic()}catch(err){
+    // make mic failures unmissable: red state + status line, not just a feed msg
+    $("micDot").className="dot off"; $("micState").textContent="blocked";
+    setState("error","MIC BLOCKED","ALLOW MICROPHONE ACCESS, THEN TAP THE RING");
+    addMsg("sys","mic blocked: "+err.message);
+    return
+  }
+  $("micDot").className="dot on"; $("micState").textContent="ready";
   if(bargeIn){ stopPlayback(); audioArrived=false; }
   ws.send(JSON.stringify({type:"start",sample_rate:16000,format:"pcm_s16le",channels:1,conversation:CONV}));
   capturing=true; hadSpeech=false; lastSpeechAt=0; speechStartAt=0;
@@ -868,7 +892,9 @@ function showPinGate(){
 }
 $("pinBtn").onclick=async()=>{
   const v=$("pinInput").value.trim(); if(!v)return;
-  document.cookie=`jarvis_token=${encodeURIComponent(v)}; path=/; max-age=31536000; secure; samesite=lax`;
+  // `secure` only on https — on a plain-http HUD (port 8765, no TLS yet) a
+  // secure cookie is never stored and every request would 401 forever.
+  document.cookie=`jarvis_token=${encodeURIComponent(v)}; path=/; max-age=31536000; ${location.protocol==="https:"?"secure; ":""}samesite=lax`;
   const r=await fetch("/api/usage");
   if(r.status===401){$("pinMsg").textContent="ACCESS DENIED";$("pinInput").value="";return}
   location.reload();

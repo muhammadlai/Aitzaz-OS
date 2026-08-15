@@ -1,5 +1,33 @@
 # Troubleshooting
 
+**No voice at all — assistant neither hears you nor speaks** — some link in the
+chain is down. Run the one-shot diagnostic on the Mac that hosts the voice
+server and fix its FAIL lines top to bottom:
+
+```bash
+cd server && scripts/jarvis-doctor.sh
+```
+
+The three most common causes, in order: (1) the voice server never started —
+`config/server.yaml` missing, the launchd job not bootstrapped, or a crash
+(check `~/Library/Logs/jarvis-voice.log`); (2) voice OUT: `ELEVENLABS_API_KEY`
+missing from `~/.hermes/.env`, voice IN: TLS cert untrusted or macOS
+microphone permission denied; (3) the packaged macOS desktop app was built
+without `NSMicrophoneUsageDescription`, so macOS denies its mic access with
+no prompt at all — rebuild the app from current sources, or open the HUD in
+Chrome/Safari instead.
+
+**HUD stuck at "LINK DOWN" / websocket instantly closes** — older servers
+rejected the HUD's WebSocket when it was opened by raw LAN IP (origin check
+only knew `jarvis.local`/`localhost`). Current code accepts the same host the
+page was loaded from plus the server's own IPs — update `server.py`. If you
+must keep an old server, add your IP to `security.extra_origin_hosts`.
+
+**HUD loops on "ACCESS DENIED" / 401 over plain http** — the PIN cookie used
+to be forced `secure`, which browsers silently refuse to store on plain http.
+Current HUD sets `secure` only on https. Use https (recommended) or update
+`hud/index.html`.
+
 **HUD loads but mic is blocked** — you're on plain http or an untrusted cert.
 Browsers require a secure context for `getUserMedia`. Trust `certs/cert.pem`
 on the device (see SETUP §3) and use `https://`.
